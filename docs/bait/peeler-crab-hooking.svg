@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <!-- organic surface texture -->
+    <filter id="tex" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="4" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.35 0" result="dots"/>
+      <feComposite in="dots" in2="SourceGraphic" operator="in" result="d2"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="d2"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
+      <feOffset dy="8"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.35"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <radialGradient id="shell" cx="45%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#6f7d3a"/>
+      <stop offset="0.6" stop-color="#46531f"/>
+      <stop offset="1" stop-color="#2b3312"/>
+    </radialGradient>
+    <radialGradient id="soft" cx="45%" cy="38%" r="70%">
+      <stop offset="0" stop-color="#f3d9b8"/>
+      <stop offset="0.45" stop-color="#e2b485"/>
+      <stop offset="0.8" stop-color="#c98f5e"/>
+      <stop offset="1" stop-color="#9d6a43"/>
+    </radialGradient>
+    <radialGradient id="socket" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#5a3a24"/>
+      <stop offset="0.6" stop-color="#8a5a38"/>
+      <stop offset="1" stop-color="#f1d2ad"/>
+    </radialGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6e9ec"/>
+      <stop offset="0.5" stop-color="#8c949b"/>
+      <stop offset="1" stop-color="#3b4046"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6f1e7"/>
+      <stop offset="1" stop-color="#e9e0cf"/>
+    </linearGradient>
+
+    <!-- peeled soft crab body (reused) -->
+    <g id="peeled">
+      <path d="M-78,-8 C-80,-42 -40,-58 0,-58 C40,-58 80,-42 78,-8 C76,28 44,50 0,50 C-44,50 -76,28 -78,-8 Z"
+            fill="url(#soft)" filter="url(#tex)" stroke="#8a5a38" stroke-width="1.5"/>
+      <!-- gill ridges seen through the soft membrane -->
+      <path d="M-50,-30 C-30,-40 -15,-20 -5,-35 M50,-30 C30,-40 15,-20 5,-35 M-45,5 C-25,-5 -10,15 0,0 C10,15 25,-5 45,5"
+            fill="none" stroke="#b27a4c" stroke-width="2" opacity="0.6"/>
+      <path d="M-20,-50 C-10,-44 10,-44 20,-50" fill="none" stroke="#fff3e0" stroke-width="4" opacity="0.6" stroke-linecap="round"/>
+      <!-- leg sockets -->
+      <g fill="url(#socket)" stroke="#7a4d2e" stroke-width="1">
+        <ellipse cx="-70" cy="-30" rx="9" ry="7"/><ellipse cx="-76" cy="-8" rx="8" ry="6.5"/>
+        <ellipse cx="-72" cy="14" rx="8" ry="6.5"/><ellipse cx="-60" cy="32" rx="7.5" ry="6"/>
+        <ellipse cx="70" cy="-30" rx="9" ry="7"/><ellipse cx="76" cy="-8" rx="8" ry="6.5"/>
+        <ellipse cx="72" cy="14" rx="8" ry="6.5"/><ellipse cx="60" cy="32" rx="7.5" ry="6"/>
+        <ellipse cx="-44" cy="-50" rx="10" ry="7.5"/><ellipse cx="44" cy="-50" rx="10" ry="7.5"/>
+      </g>
+    </g>
+
+    <!-- J hook, shank horizontal, eye on the left -->
+    <g id="hook">
+      <path d="M-120,0 L70,0 C120,0 128,78 78,88 C44,95 26,74 34,50"
+            fill="none" stroke="url(#steel)" stroke-width="7" stroke-linecap="round"/>
+      <path d="M34,50 L44,56 L36,44 Z" fill="#5b6168"/>
+      <circle cx="-128" cy="0" r="9" fill="none" stroke="url(#steel)" stroke-width="5"/>
+      <path d="M-137,0 C-150,-4 -160,-10 -170,-16" fill="none" stroke="#9fb3c4" stroke-width="2" opacity="0.9"/>
+    </g>
+  </defs>
+
+  <rect width="1200" height="760" fill="url(#bg)"/>
+  <text x="600" y="48" text-anchor="middle" font-size="30" font-weight="700" fill="#2b2b2b">Peeler crab – ako ho dať na háčik</text>
+  <text x="600" y="78" text-anchor="middle" font-size="16" fill="#6a6258">Brighton &amp; Hove · bass, flounder, smoothhound, bream · háčik 1/0–3/0 (Pennell 2/0–4/0 na bass)</text>
+
+  <!-- panel frames -->
+  <g fill="#fffdf8" stroke="#d8ccb6" stroke-width="2">
+    <rect x="24" y="100" width="370" height="420" rx="18"/>
+    <rect x="415" y="100" width="370" height="420" rx="18"/>
+    <rect x="806" y="100" width="370" height="420" rx="18"/>
+  </g>
+  <g font-size="22" font-weight="700" fill="#fff">
+    <circle cx="58" cy="134" r="20" fill="#c0612b"/><text x="58" y="142" text-anchor="middle">1</text>
+    <circle cx="449" cy="134" r="20" fill="#c0612b"/><text x="449" y="142" text-anchor="middle">2</text>
+    <circle cx="840" cy="134" r="20" fill="#c0612b"/><text x="840" y="142" text-anchor="middle">3</text>
+  </g>
+  <g font-size="19" font-weight="700" fill="#2b2b2b">
+    <text x="88" y="141">Olúp celý pancier</text>
+    <text x="479" y="141">Háčik cez jamky nôh</text>
+    <text x="870" y="141">Omotaj elastickou niťou</text>
+  </g>
+
+  <!-- PANEL 1: shore crab in its old shell, carapace lifting off -->
+  <g transform="translate(209,320)" filter="url(#shadow)">
+    <!-- legs -->
+    <g stroke="#3a4418" stroke-width="9" stroke-linecap="round" fill="none">
+      <path d="M-60,-10 L-110,-30 L-135,5"/><path d="M-62,8 L-115,5 L-138,40"/>
+      <path d="M-58,25 L-105,38 L-120,75"/><path d="M-48,38 L-85,65 L-90,100"/>
+      <path d="M60,-10 L110,-30 L135,5"/><path d="M62,8 L115,5 L138,40"/>
+      <path d="M58,25 L105,38 L120,75"/><path d="M48,38 L85,65 L90,100"/>
+    </g>
+    <!-- claws -->
+    <g fill="#4d5a22" stroke="#2b3312" stroke-width="1.5">
+      <path d="M-45,-45 L-85,-80 C-110,-95 -120,-120 -95,-128 C-80,-132 -75,-115 -70,-105 L-35,-60 Z"/>
+      <path d="M45,-45 L85,-80 C110,-95 120,-120 95,-128 C80,-132 75,-115 70,-105 L35,-60 Z"/>
+      <path d="M-95,-128 L-88,-150 L-80,-126 Z M95,-128 L88,-150 L80,-126 Z" fill="#3a4418"/>
+    </g>
+    <!-- soft new body peeking out at the rear split -->
+    <path d="M-70,20 C-60,55 60,55 70,20 C50,40 -50,40 -70,20 Z" fill="#e3a36a" stroke="#a8683c"/>
+    <!-- old carapace, slightly lifted & rotated -->
+    <g transform="translate(0,-12) rotate(-6)">
+      <path d="M-82,-30 L-70,-52 L-40,-64 L-14,-66 L-8,-58 L8,-58 L14,-66 L40,-64 L70,-52 L82,-30 C78,0 60,30 0,34 C-60,30 -78,0 -82,-30 Z"
+            fill="url(#shell)" filter="url(#tex)" stroke="#232a0e" stroke-width="2"/>
+      <path d="M-82,-30 L-90,-36 L-78,-40 L-86,-47 L-72,-50" fill="none" stroke="#232a0e" stroke-width="2"/>
+      <path d="M82,-30 L90,-36 L78,-40 L86,-47 L72,-50" fill="none" stroke="#232a0e" stroke-width="2"/>
+      <circle cx="-10" cy="-62" r="4" fill="#111"/><circle cx="10" cy="-62" r="4" fill="#111"/>
+      <path d="M-30,-20 C-10,-30 10,-30 30,-20 M-20,0 C0,-8 0,-8 20,0" fill="none" stroke="#2b3312" stroke-width="2" opacity="0.6"/>
+    </g>
+    <!-- lifting arrow -->
+    <path d="M0,70 C30,95 80,90 100,60" fill="none" stroke="#c0612b" stroke-width="3" stroke-dasharray="6 5"/>
+  </g>
+  <g font-size="15" fill="#4a443c">
+    <text x="44" y="470">Starý pancier sa odlupuje od zadku.</text>
+    <text x="44" y="492">Pod ním je mäkká oranžová koža = peeler.</text>
+  </g>
+
+  <!-- PANEL 2: peeled body threaded on the hook -->
+  <g transform="translate(610,300)">
+    <use href="#hook" transform="translate(-10,6)"/>
+    <g filter="url(#shadow)"><use href="#peeled"/></g>
+    <!-- hook point re-drawn on top where it exits -->
+    <path d="M60,60 C44,68 30,64 26,50" fill="none" stroke="url(#steel)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M24,56 L34,62 L27,49 Z" fill="#5b6168"/>
+    <!-- labels -->
+    <g stroke="#c0612b" stroke-width="2.5" fill="none">
+      <path d="M-120,-80 L-80,-40"/><path d="M110,110 L65,72"/>
+    </g>
+    <g font-size="15" font-weight="700" fill="#c0612b">
+      <text x="-160" y="-88">DNU: jamka nohy</text>
+      <text x="40" y="128">VON: hrot voľný!</text>
+    </g>
+  </g>
+  <g font-size="15" fill="#4a443c">
+    <text x="435" y="470">Hrot zapichni do jamky po nohe, pretiahni</text>
+    <text x="435" y="492">telom a vyveď von – hrot musí trčať.</text>
+  </g>
+
+  <!-- PANEL 3: bound with bait elastic -->
+  <g transform="translate(1001,300)">
+    <use href="#hook" transform="translate(-10,6)"/>
+    <g filter="url(#shadow)"><use href="#peeled"/></g>
+    <clipPath id="bodyclip">
+      <path d="M-78,-8 C-80,-42 -40,-58 0,-58 C40,-58 80,-42 78,-8 C76,28 44,50 0,50 C-44,50 -76,28 -78,-8 Z"/>
+    </clipPath>
+    <g clip-path="url(#bodyclip)" stroke="#fbfbf6" stroke-width="1.6" opacity="0.9" fill="none">
+      <path d="M-80,-50 L-40,55 M-65,-58 L-20,55 M-45,-60 L0,55 M-25,-60 L20,55 M-5,-60 L40,55 M15,-60 L60,55 M35,-60 L78,40 M55,-58 L85,15"/>
+      <path d="M80,-50 L40,55 M65,-58 L20,55 M45,-60 L0,55 M25,-60 L-20,55 M5,-60 L-40,55 M-15,-60 L-60,55 M-35,-60 L-78,40 M-55,-58 L-85,15"/>
+    </g>
+    <g stroke="#dcdcd2" stroke-width="1" opacity="0.8" fill="none">
+      <path d="M-78,-20 L78,-20 M-80,5 L80,5 M-70,28 L70,28"/>
+    </g>
+    <path d="M60,60 C44,68 30,64 26,50" fill="none" stroke="url(#steel)" stroke-width="7" stroke-linecap="round"/>
+    <path d="M24,56 L34,62 L27,49 Z" fill="#5b6168"/>
+    <!-- elastic spool -->
+    <g transform="translate(-110,110)">
+      <rect x="-22" y="-14" width="44" height="28" rx="5" fill="#f7f7f0" stroke="#b9b39f"/>
+      <rect x="-26" y="-18" width="6" height="36" rx="2" fill="#d2462f"/>
+      <rect x="20" y="-18" width="6" height="36" rx="2" fill="#d2462f"/>
+      <path d="M22,-8 C50,-30 60,-50 72,-62" stroke="#fbfbf6" stroke-width="1.6" fill="none"/>
+    </g>
+  </g>
+  <g font-size="15" fill="#4a443c">
+    <text x="826" y="470">10–20 otáčok, pevne, krížom cez telo.</text>
+    <text x="826" y="492">Hrot nechaj voľný – bez omotania.</text>
+  </g>
+
+  <!-- tips strip -->
+  <rect x="24" y="540" width="1152" height="196" rx="18" fill="#28414f"/>
+  <g font-size="16" fill="#f3efe6">
+    <text x="50" y="576" font-size="19" font-weight="700" fill="#ffd39b">Rýchle tipy</text>
+    <text x="50" y="606">• Kraba najprv usmrť: nôž cez spodok medzi očami. Nohy a klepetá odtrhni pri tele.</text>
+    <text x="50" y="634">• Veľký krab: rozpoľ na polovice/štvrtiny. Flounder/plaice = štvrtina na háčik 1–2. Bass = celý krab na Pennell 2/0–4/0.</text>
+    <text x="50" y="662">• Olúpané nožičky prilož pozdĺž driku a omotaj spolu s telom – viac šťavy a vône.</text>
+    <text x="50" y="690">• Neolúpaný „peeler“ vydrží v chladničke vo vlhkých novinách/morskej riase 5–7 dní. Olúpaný použi hneď.</text>
+    <text x="50" y="718">• Test: ak zadný okraj panciera ide ľahko dole a pod ním je lesklá mäkká koža, je to peeler. Tvrdý = nepoužívaj.</text>
+  </g>
+</svg>
