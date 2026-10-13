@@ -2,7 +2,7 @@
 
 Mobilná appka (Expo / React Native) na starostlivosť o akváriové ryby:
 
-- **Pripomienky** na kŕmenie a čistenie/výmenu vody (lokálne push notifikácie)
+- **Pripomienky** na kŕmenie, čistenie/výmenu vody a zapnutie/vypnutie osvetlenia (lokálne push notifikácie)
 - **Evidencia akvárií a rýb**
 - **AI analýza fotky** akvária – odfotíš nádrž/rybu, appka ju pošle na vyhodnotenie
   (čistota vody, zdravie rýb, riziká) a dostaneš textový report

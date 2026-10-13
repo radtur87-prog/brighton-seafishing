@@ -54,6 +54,18 @@ export interface CleaningSchedule {
   created_at: string;
 }
 
+export interface LightingSchedule {
+  id: string;
+  tank_id: string;
+  start_time: string; // 'HH:mm:ss'
+  duration_minutes: number;
+  days_of_week: number[]; // 0=Sunday .. 6=Saturday
+  enabled: boolean;
+  notification_on_id: string | null;
+  notification_off_id: string | null;
+  created_at: string;
+}
+
 export interface TaskLog {
   id: string;
   tank_id: string;

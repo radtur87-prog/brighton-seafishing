@@ -10,24 +10,30 @@ import {
   type CleaningSchedule,
   type CleaningTaskType,
   type FeedingSchedule,
+  type LightingSchedule,
   type Tank,
 } from '@/types/database';
 import {
   createCleaningSchedule,
   createFeedingSchedule,
+  createLightingSchedule,
   deleteCleaningSchedule,
   deleteFeedingSchedule,
+  deleteLightingSchedule,
   fetchCleaningSchedules,
   fetchFeedingSchedules,
+  fetchLightingSchedules,
   fetchTanks,
   updateCleaningScheduleNotification,
   updateFeedingScheduleNotification,
+  updateLightingScheduleNotifications,
 } from '@/lib/queries';
 import {
   cancelNotificationGroup,
   ensureNotificationPermission,
   scheduleCleaningNotification,
   scheduleFeedingNotifications,
+  scheduleLightingNotifications,
 } from '@/lib/notifications';
 
 const CLEANING_TYPES: CleaningTaskType[] = [
@@ -42,17 +48,25 @@ export default function ScheduleScreen() {
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [feedings, setFeedings] = useState<FeedingSchedule[]>([]);
   const [cleanings, setCleanings] = useState<CleaningSchedule[]>([]);
+  const [lightings, setLightings] = useState<LightingSchedule[]>([]);
   const [showAddFeeding, setShowAddFeeding] = useState(false);
   const [showAddCleaning, setShowAddCleaning] = useState(false);
+  const [showAddLighting, setShowAddLighting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      const [t, f, c] = await Promise.all([fetchTanks(), fetchFeedingSchedules(), fetchCleaningSchedules()]);
+      const [t, f, c, l] = await Promise.all([
+        fetchTanks(),
+        fetchFeedingSchedules(),
+        fetchCleaningSchedules(),
+        fetchLightingSchedules(),
+      ]);
       setTanks(t);
       setFeedings(f);
       setCleanings(c);
+      setLightings(l);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Chyba pri načítaní plánu.');
     }
@@ -76,6 +90,21 @@ export default function ScheduleScreen() {
     await cancelNotificationGroup(schedule.notification_id);
     await deleteCleaningSchedule(schedule.id);
     setCleanings((prev) => prev.filter((c) => c.id !== schedule.id));
+  }
+
+  async function handleDeleteLighting(schedule: LightingSchedule) {
+    await cancelNotificationGroup(schedule.notification_on_id);
+    await cancelNotificationGroup(schedule.notification_off_id);
+    await deleteLightingSchedule(schedule.id);
+    setLightings((prev) => prev.filter((l) => l.id !== schedule.id));
+  }
+
+  function formatEndTime(start: string, durationMinutes: number): string {
+    const [h, m] = start.split(':').map(Number);
+    const total = (h * 60 + m + durationMinutes) % 1440;
+    const endH = Math.floor(total / 60);
+    const endM = total % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
   }
 
   if (tanks.length === 0) {
@@ -144,6 +173,35 @@ export default function ScheduleScreen() {
         </View>
       ))}
 
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>💡 Osvetlenie</Text>
+        <Pressable style={styles.addButton} onPress={() => setShowAddLighting(true)}>
+          <Plus color={colors.background} size={18} />
+        </Pressable>
+      </View>
+      {lightings.length === 0 && <Text style={styles.empty}>Žiadny plán osvetlenia.</Text>}
+      {lightings.map((l) => (
+        <View key={l.id} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>
+              {l.start_time.slice(0, 5)}–{formatEndTime(l.start_time, l.duration_minutes)} ·{' '}
+              {tankName(l.tank_id)}
+            </Text>
+            <Pressable onPress={() => handleDeleteLighting(l)} hitSlop={10}>
+              <Trash2 color={colors.danger} size={18} />
+            </Pressable>
+          </View>
+          <Text style={styles.cardMeta}>
+            {Math.floor(l.duration_minutes / 60)} h {l.duration_minutes % 60} min svietenia
+          </Text>
+          <Text style={styles.cardMeta}>
+            {l.days_of_week.length === 7
+              ? 'Každý deň'
+              : l.days_of_week.map((d) => DAY_LABELS[d]).join(', ')}
+          </Text>
+        </View>
+      ))}
+
       <AddFeedingModal
         visible={showAddFeeding}
         tanks={tanks}
@@ -161,6 +219,16 @@ export default function ScheduleScreen() {
         onCreated={(schedule) => {
           setCleanings((prev) => [...prev, schedule]);
           setShowAddCleaning(false);
+        }}
+      />
+
+      <AddLightingModal
+        visible={showAddLighting}
+        tanks={tanks}
+        onClose={() => setShowAddLighting(false)}
+        onCreated={(schedule) => {
+          setLightings((prev) => [...prev, schedule]);
+          setShowAddLighting(false);
         }}
       />
     </ScrollView>
@@ -394,6 +462,139 @@ function AddCleaningModal({
             value={intervalDays}
             onChangeText={setIntervalDays}
           />
+
+          {error && <Text style={styles.error}>{error}</Text>}
+
+          <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
+            <Text style={styles.saveButtonText}>{saving ? 'Ukladám...' : 'Uložiť plán'}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function AddLightingModal({
+  visible,
+  tanks,
+  onClose,
+  onCreated,
+}: {
+  visible: boolean;
+  tanks: Tank[];
+  onClose: () => void;
+  onCreated: (s: LightingSchedule) => void;
+}) {
+  const [tankId, setTankId] = useState(tanks[0]?.id ?? '');
+  const [startTime, setStartTime] = useState(new Date(0, 0, 0, 9, 0));
+  const [durationHours, setDurationHours] = useState('8');
+  const [days, setDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function toggleDay(d: number) {
+    setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort()));
+  }
+
+  async function handleSave() {
+    const effectiveTankId = tankId || tanks[0]?.id;
+    if (!effectiveTankId) {
+      setError('Vyber akvárium.');
+      return;
+    }
+    if (days.length === 0) {
+      setError('Vyber aspoň jeden deň.');
+      return;
+    }
+    const durationMinutes = Math.round(Number(durationHours) * 60);
+    if (!durationMinutes || durationMinutes <= 0) {
+      setError('Zadaj platnú dĺžku svietenia.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const hh = String(startTime.getHours()).padStart(2, '0');
+      const mm = String(startTime.getMinutes()).padStart(2, '0');
+      const schedule = await createLightingSchedule({
+        tank_id: effectiveTankId,
+        start_time: `${hh}:${mm}:00`,
+        duration_minutes: durationMinutes,
+        days_of_week: days,
+      });
+
+      const granted = await ensureNotificationPermission();
+      if (granted) {
+        const tank = tanks.find((t) => t.id === effectiveTankId);
+        const { onId, offId } = await scheduleLightingNotifications(schedule, tank?.name ?? 'Akvárium');
+        await updateLightingScheduleNotifications(schedule.id, onId, offId);
+        schedule.notification_on_id = onId;
+        schedule.notification_off_id = offId;
+      }
+
+      onCreated(schedule);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Nepodarilo sa uložiť plán osvetlenia.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Nový plán osvetlenia</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <X color={colors.textMuted} size={22} />
+            </Pressable>
+          </View>
+
+          <Text style={styles.label}>Akvárium</Text>
+          <View style={styles.chipRow}>
+            {tanks.map((t) => (
+              <Pressable
+                key={t.id}
+                style={[styles.chip, tankId === t.id && styles.chipActive]}
+                onPress={() => setTankId(t.id)}
+              >
+                <Text style={[styles.chipText, tankId === t.id && styles.chipTextActive]}>{t.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Čas zapnutia</Text>
+          <DateTimePicker
+            value={startTime}
+            mode="time"
+            display="spinner"
+            onChange={(_, selected) => selected && setStartTime(selected)}
+            themeVariant="dark"
+          />
+
+          <Text style={styles.label}>Dĺžka svietenia (hodiny)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="napr. 8"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="decimal-pad"
+            value={durationHours}
+            onChangeText={setDurationHours}
+          />
+
+          <Text style={styles.label}>Dni v týždni</Text>
+          <View style={styles.chipRow}>
+            {DAY_LABELS.map((label, idx) => (
+              <Pressable
+                key={label}
+                style={[styles.dayChip, days.includes(idx) && styles.chipActive]}
+                onPress={() => toggleDay(idx)}
+              >
+                <Text style={[styles.chipText, days.includes(idx) && styles.chipTextActive]}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
 

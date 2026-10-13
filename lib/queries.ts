@@ -4,6 +4,7 @@ import type {
   CleaningTaskType,
   FeedingSchedule,
   Fish,
+  LightingSchedule,
   PhotoAnalysis,
   Tank,
   TaskLog,
@@ -172,6 +173,46 @@ export async function markCleaningDone(schedule: CleaningSchedule): Promise<Clea
 
 export async function deleteCleaningSchedule(id: string): Promise<void> {
   const { error } = await supabase.from('cleaning_schedules').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function fetchLightingSchedules(tankId?: string): Promise<LightingSchedule[]> {
+  let query = supabase.from('lighting_schedules').select('*').order('start_time');
+  if (tankId) query = query.eq('tank_id', tankId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createLightingSchedule(input: {
+  tank_id: string;
+  start_time: string;
+  duration_minutes: number;
+  days_of_week: number[];
+}): Promise<LightingSchedule> {
+  const { data, error } = await supabase
+    .from('lighting_schedules')
+    .insert(input)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLightingScheduleNotifications(
+  id: string,
+  notification_on_id: string | null,
+  notification_off_id: string | null
+): Promise<void> {
+  const { error } = await supabase
+    .from('lighting_schedules')
+    .update({ notification_on_id, notification_off_id })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteLightingSchedule(id: string): Promise<void> {
+  const { error } = await supabase.from('lighting_schedules').delete().eq('id', id);
   if (error) throw error;
 }
 

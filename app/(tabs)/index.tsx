@@ -10,10 +10,11 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { colors, radius, spacing } from '@/constants/theme';
 import { CLEANING_TASK_LABELS } from '@/types/database';
-import type { CleaningSchedule, FeedingSchedule, Tank } from '@/types/database';
+import type { CleaningSchedule, FeedingSchedule, LightingSchedule, Tank } from '@/types/database';
 import {
   fetchCleaningSchedules,
   fetchFeedingSchedules,
+  fetchLightingSchedules,
   fetchTanks,
   logFeedingDone,
   markCleaningDone,
@@ -27,7 +28,20 @@ type CleaningItem = {
   tankName: string;
   overdue: boolean;
 };
-type AgendaItem = FeedingItem | CleaningItem;
+type LightingItem = {
+  kind: 'lighting';
+  id: string;
+  schedule: LightingSchedule;
+  tankName: string;
+  endTime: string;
+};
+type AgendaItem = FeedingItem | CleaningItem | LightingItem;
+
+function addMinutesToTime(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = (h * 60 + m + minutes) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
 
 export default function DashboardScreen() {
   const [items, setItems] = useState<AgendaItem[]>([]);
@@ -38,10 +52,11 @@ export default function DashboardScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [tanks, feedings, cleanings] = await Promise.all([
+      const [tanks, feedings, cleanings, lightings] = await Promise.all([
         fetchTanks(),
         fetchFeedingSchedules(),
         fetchCleaningSchedules(),
+        fetchLightingSchedules(),
       ]);
       const tankNameById = new Map<string, string>(tanks.map((t: Tank) => [t.id, t.name]));
       const todayWeekday = new Date().getDay();
@@ -67,7 +82,17 @@ export default function DashboardScreen() {
           overdue: new Date(c.next_due_at) < new Date(new Date().setHours(0, 0, 0, 0)),
         }));
 
-      setItems([...feedingItems, ...cleaningItems]);
+      const lightingItems: AgendaItem[] = lightings
+        .filter((l) => l.enabled && l.days_of_week.includes(todayWeekday))
+        .map((l) => ({
+          kind: 'lighting',
+          id: `lighting-${l.id}`,
+          schedule: l,
+          tankName: tankNameById.get(l.tank_id) ?? 'Akvárium',
+          endTime: addMinutesToTime(l.start_time, l.duration_minutes),
+        }));
+
+      setItems([...feedingItems, ...lightingItems, ...cleaningItems]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Nepodarilo sa načítať úlohy.');
     } finally {
@@ -108,7 +133,9 @@ export default function DashboardScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardBadge}>{item.kind === 'feeding' ? '🐟 Kŕmenie' : '🧽 Čistenie'}</Text>
+              <Text style={styles.cardBadge}>
+                {item.kind === 'feeding' ? '🐟 Kŕmenie' : item.kind === 'lighting' ? '💡 Osvetlenie' : '🧽 Čistenie'}
+              </Text>
               {item.kind === 'cleaning' && item.overdue && (
                 <Text style={styles.overdueBadge}>Po termíne</Text>
               )}
@@ -116,24 +143,33 @@ export default function DashboardScreen() {
             <Text style={styles.cardTitle}>
               {item.kind === 'feeding'
                 ? item.schedule.food_type || 'Kŕmenie rýb'
-                : CLEANING_TASK_LABELS[item.schedule.task_type]}
+                : item.kind === 'lighting'
+                  ? 'Svetlo zapnuté'
+                  : CLEANING_TASK_LABELS[item.schedule.task_type]}
             </Text>
             <Text style={styles.cardMeta}>{item.tankName}</Text>
             {item.kind === 'feeding' && (
               <Text style={styles.cardMeta}>⏰ {item.schedule.time_of_day.slice(0, 5)}</Text>
             )}
-            <Pressable
-              style={styles.doneButton}
-              onPress={() => (item.kind === 'feeding' ? handleFeedingDone(item) : handleCleaningDone(item))}
-            >
-              <Text style={styles.doneButtonText}>Označiť ako hotové</Text>
-            </Pressable>
+            {item.kind === 'lighting' && (
+              <Text style={styles.cardMeta}>
+                ⏰ {item.schedule.start_time.slice(0, 5)}–{item.endTime}
+              </Text>
+            )}
+            {item.kind !== 'lighting' && (
+              <Pressable
+                style={styles.doneButton}
+                onPress={() => (item.kind === 'feeding' ? handleFeedingDone(item) : handleCleaningDone(item))}
+              >
+                <Text style={styles.doneButtonText}>Označiť ako hotové</Text>
+              </Pressable>
+            )}
           </View>
         )}
         ListEmptyComponent={
           !loading ? (
             <Text style={styles.empty}>
-              Pridaj akvárium a nastav plán kŕmenia/čistenia v záložke „Plán“.
+              Pridaj akvárium a nastav plán kŕmenia/čistenia/osvetlenia v záložke „Plán“.
             </Text>
           ) : null
         }

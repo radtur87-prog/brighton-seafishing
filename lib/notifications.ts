@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import type { CleaningSchedule, FeedingSchedule } from '@/types/database';
+import type { CleaningSchedule, FeedingSchedule, LightingSchedule } from '@/types/database';
 import { CLEANING_TASK_LABELS } from '@/types/database';
 
 Notifications.setNotificationHandler({
@@ -79,6 +79,60 @@ export async function scheduleCleaningNotification(
       date: dueDate,
     },
   });
+}
+
+/**
+ * Naplánuje pripomienku zapnutia a vypnutia osvetlenia pre každý vybraný deň.
+ * Ak dĺžka svietenia presiahne polnoc, "vypnúť" notifikácia sa posunie na
+ * nasledujúci deň v týždni.
+ */
+export async function scheduleLightingNotifications(
+  schedule: Pick<LightingSchedule, 'start_time' | 'duration_minutes' | 'days_of_week'>,
+  tankName: string
+): Promise<{ onId: string; offId: string }> {
+  const [startHour, startMinute] = schedule.start_time.split(':').map(Number);
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = startTotalMinutes + schedule.duration_minutes;
+  const dayOffset = Math.floor(endTotalMinutes / 1440);
+  const endMinutesOfDay = endTotalMinutes % 1440;
+  const endHour = Math.floor(endMinutesOfDay / 60);
+  const endMinute = endMinutesOfDay % 60;
+
+  const onIds: string[] = [];
+  const offIds: string[] = [];
+
+  for (const weekday of schedule.days_of_week) {
+    const onId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `💡 Zapnúť svetlo – ${tankName}`,
+        body: 'Je čas zapnúť osvetlenie akvária.',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: expoWeekday(weekday),
+        hour: startHour,
+        minute: startMinute,
+      },
+    });
+    onIds.push(onId);
+
+    const offWeekday = (weekday + dayOffset) % 7;
+    const offId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `🌙 Vypnúť svetlo – ${tankName}`,
+        body: 'Je čas vypnúť osvetlenie akvária.',
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: expoWeekday(offWeekday),
+        hour: endHour,
+        minute: endMinute,
+      },
+    });
+    offIds.push(offId);
+  }
+
+  return { onId: onIds.join(','), offId: offIds.join(',') };
 }
 
 export async function cancelNotificationGroup(idString: string | null | undefined) {
