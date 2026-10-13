@@ -1,0 +1,120 @@
+import { useCallback, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { colors, radius, spacing } from '@/constants/theme';
+import { useAuth } from '@/lib/AuthContext';
+import { ensureNotificationPermission } from '@/lib/notifications';
+
+export default function SettingsScreen() {
+  const { user, signOut } = useAuth();
+  const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+
+  const checkPermission = useCallback(async () => {
+    const current = await Notifications.getPermissionsAsync();
+    setPermissionGranted(current.granted);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkPermission();
+    }, [checkPermission])
+  );
+
+  async function handleRequestPermission() {
+    const granted = await ensureNotificationPermission();
+    setPermissionGranted(granted);
+  }
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Nastavenia</Text>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>Prihlásený ako</Text>
+        <Text style={styles.value}>{user?.email}</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>Push notifikácie</Text>
+        <Text style={styles.value}>
+          {permissionGranted === null
+            ? 'Zisťujem stav...'
+            : permissionGranted
+              ? '✅ Povolené'
+              : '❌ Nepovolené'}
+        </Text>
+        {!permissionGranted && (
+          <Pressable style={styles.secondaryButton} onPress={handleRequestPermission}>
+            <Text style={styles.secondaryButtonText}>Povoliť notifikácie</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <Pressable style={styles.signOutButton} onPress={signOut}>
+        <Text style={styles.signOutText}>Odhlásiť sa</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    paddingTop: 64,
+    paddingHorizontal: spacing.lg,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.lg,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  label: {
+    color: colors.textMuted,
+    fontSize: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  value: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  secondaryButton: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  secondaryButtonText: {
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  signOutButton: {
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  signOutText: {
+    color: colors.danger,
+    fontWeight: '700',
+    fontSize: 15,
+  },
+});
