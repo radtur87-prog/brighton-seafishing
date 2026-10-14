@@ -1,20 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
 import { Camera, ImagePlus } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
-import { createPendingPhotoAnalysis, fetchPhotoAnalyses, fetchTanks } from '@/lib/queries';
+import {
+  createPendingPhotoAnalysis,
+  fetchPhotoAnalyses,
+  fetchTanks,
+  markPhotoAnalysisError,
+} from '@/lib/queries';
+import { base64ToArrayBuffer, photoFileType } from '@/lib/photos';
+import { errorMessage } from '@/lib/errors';
 import type { PhotoAnalysis, Tank } from '@/types/database';
 
 const RISK_COLORS: Record<string, string> = {
@@ -29,6 +27,9 @@ const RISK_LABELS: Record<string, string> = {
   urgent: 'Zasiahni',
 };
 
+const AI_NOT_READY =
+  'Fotka je uložená, ale AI analýza ešte nie je zapnutá (treba nasadiť funkciu analyze-photo a nastaviť ANTHROPIC_API_KEY).';
+
 export default function AnalyzeScreen() {
   const [tanks, setTanks] = useState<Tank[]>([]);
   const [selectedTankId, setSelectedTankId] = useState<string | null>(null);
@@ -40,10 +41,10 @@ export default function AnalyzeScreen() {
     try {
       const [t, a] = await Promise.all([fetchTanks(), fetchPhotoAnalyses()]);
       setTanks(t);
-      setSelectedTankId((prev) => prev ?? t[0]?.id ?? null);
+      setSelectedTankId((prev) => (prev && t.some((x) => x.id === prev) ? prev : (t[0]?.id ?? null)));
       setAnalyses(a);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Chyba pri načítaní analýz.');
+      setError(errorMessage(e, 'Analýzy sa nepodarilo načítať.'));
     }
   }, []);
 
@@ -55,67 +56,78 @@ export default function AnalyzeScreen() {
 
   async function pickAndAnalyze(source: 'camera' | 'library') {
     setError(null);
-    const permission =
-      source === 'camera'
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    try {
+      // The browser file picker needs no permission prompt.
+      if (Platform.OS !== 'web') {
+        const permission =
+          source === 'camera'
+            ? await ImagePicker.requestCameraPermissionsAsync()
+            : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          setError('Povoľ prístup k fotoaparátu/fotkám v nastaveniach telefónu, aby sa dala fotka analyzovať.');
+          return;
+        }
+      }
 
-    if (!permission.granted) {
-      setError('Potrebujem povolenie na fotoaparát/fotky, aby som mohol/a analyzovať snímku.');
-      return;
+      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7, base64: true };
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+
+      if (result.canceled || !result.assets?.[0]) return;
+      await uploadAndAnalyze(result.assets[0]);
+    } catch (e) {
+      setError(errorMessage(e, 'Fotku sa nepodarilo načítať.'));
     }
-
-    const result =
-      source === 'camera'
-        ? await ImagePicker.launchCameraAsync({ quality: 0.7, base64: false })
-        : await ImagePicker.launchImageLibraryAsync({ quality: 0.7, base64: false });
-
-    if (result.canceled || !result.assets?.[0]) return;
-
-    await uploadAndAnalyze(result.assets[0].uri);
   }
 
-  async function uploadAndAnalyze(localUri: string) {
+  async function uploadAndAnalyze(asset: ImagePicker.ImagePickerAsset) {
     setUploading(true);
     setError(null);
+    let pendingId: string | null = null;
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Nie si prihlásený/á.');
 
-      const fileExt = localUri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${Date.now()}.${fileExt}`;
-      const storagePath = `${userData.user.id}/${fileName}`;
-
-      const response = await fetch(localUri);
-      const arrayBuffer = await response.arrayBuffer();
+      const { ext, contentType } = photoFileType(asset.mimeType, asset.uri);
+      const storagePath = `${userData.user.id}/${Date.now()}.${ext}`;
+      const body = asset.base64
+        ? base64ToArrayBuffer(asset.base64)
+        : await (await fetch(asset.uri)).arrayBuffer();
 
       const { error: uploadError } = await supabase.storage
         .from('tank-photos')
-        .upload(storagePath, arrayBuffer, {
-          contentType: `image/${fileExt === 'jpg' ? 'jpeg' : fileExt}`,
-          upsert: false,
-        });
+        .upload(storagePath, body, { contentType, upsert: false });
       if (uploadError) throw uploadError;
 
-      const pending = await createPendingPhotoAnalysis({
-        tank_id: selectedTankId,
-        photo_path: storagePath,
-      });
+      const pending = await createPendingPhotoAnalysis({ tank_id: selectedTankId, photo_path: storagePath });
+      pendingId = pending.id;
       setAnalyses((prev) => [pending, ...prev]);
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke('analyze-photo', {
         body: { photo_analysis_id: pending.id },
       });
 
-      if (fnError) throw fnError;
+      if (fnError || !fnData || (fnData as { error?: string }).error) {
+        await markPhotoAnalysisError(pending.id, AI_NOT_READY).catch(() => undefined);
+        setAnalyses((prev) =>
+          prev.map((a) => (a.id === pending.id ? { ...a, status: 'error', error_message: AI_NOT_READY } : a))
+        );
+        return;
+      }
 
       setAnalyses((prev) =>
         prev.map((a) => (a.id === pending.id ? { ...a, ...(fnData as Partial<PhotoAnalysis>) } : a))
       );
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Analýza fotky zlyhala.';
+      const message = errorMessage(e, 'Analýza fotky zlyhala.');
       setError(message);
-      Alert.alert('Chyba', message);
+      if (pendingId) {
+        const id = pendingId;
+        await markPhotoAnalysisError(id, message).catch(() => undefined);
+        setAnalyses((prev) => prev.map((a) => (a.id === id ? { ...a, status: 'error', error_message: message } : a)));
+      }
     } finally {
       setUploading(false);
     }

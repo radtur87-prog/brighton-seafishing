@@ -32,12 +32,14 @@ export default function SignUpScreen() {
       return;
     }
     setLoading(true);
-    const message = await signUp(email.trim(), password);
+    const result = await signUp(email.trim(), password);
     setLoading(false);
-    if (message) {
-      setError(message);
-    } else {
-      setInfo('Účet vytvorený. Ak je potrebné, potvrď e-mail a prihlás sa.');
+    if (result.status === 'error') {
+      setError(result.message);
+    } else if (result.status === 'confirm_email') {
+      setInfo(
+        'Účet je vytvorený. Poslali sme ti e-mail – klikni v ňom na odkaz na potvrdenie (aj keď sa potom otvorí chybová stránka, nevadí). Potom sa vráť sem a prihlás sa.'
+      );
     }
   }
 
@@ -53,6 +55,7 @@ export default function SignUpScreen() {
         <TextInput
           style={styles.input}
           placeholder="E-mail"
+          testID="signup-email"
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -62,16 +65,17 @@ export default function SignUpScreen() {
         <TextInput
           style={styles.input}
           placeholder="Heslo (min. 6 znakov)"
+          testID="signup-password"
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
         />
 
-        {error && <Text style={styles.error}>{error}</Text>}
-        {info && <Text style={styles.info}>{info}</Text>}
+        {error && <Text style={styles.error} testID="signup-error">{error}</Text>}
+        {info && <Text style={styles.info} testID="signup-info">{info}</Text>}
 
-        <Pressable style={styles.button} onPress={handleSignUp} disabled={loading}>
+        <Pressable style={styles.button} onPress={handleSignUp} disabled={loading} testID="signup-submit">
           <Text style={styles.buttonText}>{loading ? 'Vytváram účet...' : 'Zaregistrovať sa'}</Text>
         </Pressable>
 

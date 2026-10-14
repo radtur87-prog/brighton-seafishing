@@ -43,6 +43,7 @@ export default function SignInScreen() {
         <TextInput
           style={styles.input}
           placeholder="E-mail"
+          testID="signin-email"
           placeholderTextColor={colors.textMuted}
           autoCapitalize="none"
           keyboardType="email-address"
@@ -52,15 +53,16 @@ export default function SignInScreen() {
         <TextInput
           style={styles.input}
           placeholder="Heslo"
+          testID="signin-password"
           placeholderTextColor={colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
         />
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={styles.error} testID="signin-error">{error}</Text>}
 
-        <Pressable style={styles.button} onPress={handleSignIn} disabled={loading}>
+        <Pressable style={styles.button} onPress={handleSignIn} disabled={loading} testID="signin-submit">
           <Text style={styles.buttonText}>{loading ? 'Prihlasujem...' : 'Prihlásiť sa'}</Text>
         </Pressable>
 

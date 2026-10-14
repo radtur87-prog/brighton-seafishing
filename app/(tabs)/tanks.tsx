@@ -12,7 +12,9 @@ import { useFocusEffect } from 'expo-router';
 import { Plus, Trash2, X } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/constants/theme';
 import type { Fish, Tank, WaterType } from '@/types/database';
-import { addFish, createTank, deleteFish, deleteTank, fetchFish, fetchTanks } from '@/lib/queries';
+import { addFish, createTank, deleteFish, fetchFish, fetchTanks } from '@/lib/queries';
+import { removeTank } from '@/lib/reminders';
+import { errorMessage } from '@/lib/errors';
 
 const WATER_TYPES: { value: WaterType; label: string }[] = [
   { value: 'freshwater', label: 'Sladkovodné' },
@@ -27,6 +29,8 @@ export default function TanksScreen() {
   const [expandedTankId, setExpandedTankId] = useState<string | null>(null);
   const [showAddTank, setShowAddTank] = useState(false);
   const [showAddFish, setShowAddFish] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -35,7 +39,9 @@ export default function TanksScreen() {
       const data = await fetchTanks();
       setTanks(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Chyba pri načítaní akvárií.');
+      setError(errorMessage(e, 'Akváriá sa nepodarilo načítať.'));
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -52,29 +58,47 @@ export default function TanksScreen() {
     }
     setExpandedTankId(tank.id);
     if (!fishByTank[tank.id]) {
-      const fish = await fetchFish(tank.id);
-      setFishByTank((prev) => ({ ...prev, [tank.id]: fish }));
+      try {
+        const fish = await fetchFish(tank.id);
+        setFishByTank((prev) => ({ ...prev, [tank.id]: fish }));
+      } catch (e) {
+        setError(errorMessage(e, 'Ryby sa nepodarilo načítať.'));
+      }
     }
   }
 
   async function handleDeleteTank(tankId: string) {
-    await deleteTank(tankId);
-    setTanks((prev) => prev.filter((t) => t.id !== tankId));
+    try {
+      await removeTank(tankId);
+      setTanks((prev) => prev.filter((t) => t.id !== tankId));
+      setConfirmDeleteId(null);
+    } catch (e) {
+      setError(errorMessage(e, 'Akvárium sa nepodarilo zmazať.'));
+    }
   }
 
   async function handleDeleteFish(tankId: string, fishId: string) {
-    await deleteFish(fishId);
-    setFishByTank((prev) => ({
-      ...prev,
-      [tankId]: (prev[tankId] ?? []).filter((f) => f.id !== fishId),
-    }));
+    try {
+      await deleteFish(fishId);
+      setFishByTank((prev) => ({
+        ...prev,
+        [tankId]: (prev[tankId] ?? []).filter((f) => f.id !== fishId),
+      }));
+    } catch (e) {
+      setError(errorMessage(e, 'Rybu sa nepodarilo odstrániť.'));
+    }
   }
 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Moje akváriá</Text>
-        <Pressable style={styles.addButton} onPress={() => setShowAddTank(true)}>
+        <Pressable
+          style={styles.addButton}
+          onPress={() => setShowAddTank(true)}
+          testID="add-tank"
+          accessibilityLabel="Pridať akvárium"
+        >
           <Plus color={colors.background} size={20} />
         </Pressable>
       </View>
@@ -89,20 +113,34 @@ export default function TanksScreen() {
           const isOpen = expandedTankId === item.id;
           const fish = fishByTank[item.id] ?? [];
           return (
-            <View style={styles.card}>
-              <Pressable onPress={() => toggleExpand(item)}>
-                <View style={styles.cardHeader}>
+            <View style={styles.card} testID="tank-card">
+              <View style={styles.cardHeader}>
+                <Pressable style={styles.cardHeaderMain} onPress={() => toggleExpand(item)} testID="tank-toggle">
                   <Text style={styles.cardTitle}>{item.name}</Text>
-                  <Pressable onPress={() => handleDeleteTank(item.id)} hitSlop={10}>
-                    <Trash2 color={colors.danger} size={18} />
+                  <Text style={styles.cardMeta}>
+                    {WATER_TYPES.find((w) => w.value === item.water_type)?.label}
+                    {item.volume_liters ? ` · ${item.volume_liters} l` : ''}
+                    {isOpen ? '' : ' · ťukni pre ryby'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setConfirmDeleteId(confirmDeleteId === item.id ? null : item.id)}
+                  hitSlop={10}
+                  accessibilityLabel="Zmazať akvárium"
+                >
+                  <Trash2 color={colors.danger} size={18} />
+                </Pressable>
+              </View>
+              {item.notes ? <Text style={styles.cardNotes}>{item.notes}</Text> : null}
+
+              {confirmDeleteId === item.id && (
+                <View style={styles.confirmRow}>
+                  <Text style={styles.confirmText}>Zmazať akvárium aj všetky jeho ryby a plány?</Text>
+                  <Pressable style={styles.confirmButton} onPress={() => handleDeleteTank(item.id)}>
+                    <Text style={styles.confirmButtonText}>Áno, zmazať</Text>
                   </Pressable>
                 </View>
-                <Text style={styles.cardMeta}>
-                  {WATER_TYPES.find((w) => w.value === item.water_type)?.label}
-                  {item.volume_liters ? ` · ${item.volume_liters} l` : ''}
-                </Text>
-                {item.notes ? <Text style={styles.cardNotes}>{item.notes}</Text> : null}
-              </Pressable>
+              )}
 
               {isOpen && (
                 <View style={styles.fishSection}>
@@ -117,7 +155,8 @@ export default function TanksScreen() {
                       </Pressable>
                     </View>
                   ))}
-                  <Pressable style={styles.addFishButton} onPress={() => setShowAddFish(item.id)}>
+                  {fish.length === 0 && <Text style={styles.cardMeta}>Zatiaľ žiadne ryby.</Text>}
+                  <Pressable style={styles.addFishButton} onPress={() => setShowAddFish(item.id)} testID="add-fish">
                     <Text style={styles.addFishText}>+ Pridať rybu</Text>
                   </Pressable>
                 </View>
@@ -126,7 +165,9 @@ export default function TanksScreen() {
           );
         }}
         ListEmptyComponent={
-          <Text style={styles.empty}>Zatiaľ nemáš žiadne akvárium. Pridaj prvé tlačidlom +.</Text>
+          loaded ? (
+            <Text style={styles.empty}>Zatiaľ nemáš žiadne akvárium. Pridaj prvé tlačidlom +.</Text>
+          ) : null
         }
       />
 
@@ -176,7 +217,7 @@ function AddTankModal({
     try {
       const tank = await createTank({
         name: name.trim(),
-        volume_liters: volume ? Number(volume) : null,
+        volume_liters: volume ? Number(volume.replace(',', '.')) || null : null,
         water_type: waterType,
       });
       onCreated(tank);
@@ -184,7 +225,7 @@ function AddTankModal({
       setVolume('');
       setWaterType('freshwater');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Nepodarilo sa uložiť akvárium.');
+      setError(errorMessage(e, 'Akvárium sa nepodarilo uložiť.'));
     } finally {
       setSaving(false);
     }
@@ -204,6 +245,7 @@ function AddTankModal({
           <TextInput
             style={styles.input}
             placeholder="Názov (napr. Obývačka 54l)"
+            testID="tank-name"
             placeholderTextColor={colors.textMuted}
             value={name}
             onChangeText={setName}
@@ -233,7 +275,7 @@ function AddTankModal({
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
+          <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving} testID="save-tank">
             <Text style={styles.saveButtonText}>{saving ? 'Ukladám...' : 'Uložiť akvárium'}</Text>
           </Pressable>
         </View>
@@ -270,14 +312,14 @@ function AddFishModal({
         tank_id: tankId,
         species: species.trim(),
         nickname: nickname.trim() || null,
-        count: Number(count) || 1,
+        count: Math.max(1, Math.round(Number(count)) || 1),
       });
       onCreated(tankId, fish);
       setSpecies('');
       setNickname('');
       setCount('1');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Nepodarilo sa pridať rybu.');
+      setError(errorMessage(e, 'Rybu sa nepodarilo pridať.'));
     } finally {
       setSaving(false);
     }
@@ -297,6 +339,7 @@ function AddFishModal({
           <TextInput
             style={styles.input}
             placeholder="Druh (napr. Guppy)"
+            testID="fish-species"
             placeholderTextColor={colors.textMuted}
             value={species}
             onChangeText={setSpecies}
@@ -319,7 +362,7 @@ function AddFishModal({
 
           {error && <Text style={styles.error}>{error}</Text>}
 
-          <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
+          <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving} testID="save-fish">
             <Text style={styles.saveButtonText}>{saving ? 'Ukladám...' : 'Pridať'}</Text>
           </Pressable>
         </View>
@@ -373,6 +416,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  cardHeaderMain: {
+    flex: 1,
+  },
+  confirmRow: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceAlt,
+    gap: spacing.sm,
+  },
+  confirmText: {
+    color: colors.text,
+    fontSize: 13,
+  },
+  confirmButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.danger,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+  },
+  confirmButtonText: {
+    color: '#2A0707',
+    fontWeight: '700',
+    fontSize: 13,
   },
   cardTitle: {
     color: colors.text,

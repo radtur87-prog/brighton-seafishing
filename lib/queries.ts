@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { nextDueDate } from '@/lib/time';
 import type {
   CleaningSchedule,
   CleaningTaskType,
@@ -152,7 +153,7 @@ export async function updateCleaningScheduleNotification(
 
 export async function markCleaningDone(schedule: CleaningSchedule): Promise<CleaningSchedule> {
   const now = new Date();
-  const nextDue = new Date(now.getTime() + schedule.interval_days * 24 * 60 * 60 * 1000);
+  const nextDue = nextDueDate(now, schedule.interval_days);
 
   const { data, error } = await supabase
     .from('cleaning_schedules')
@@ -216,14 +217,37 @@ export async function deleteLightingSchedule(id: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function logFeedingDone(tankId: string): Promise<TaskLog> {
+// The feeding schedule id is kept in `note` so the dashboard can tell which feedings are done today.
+const FEEDING_NOTE_PREFIX = 'schedule:';
+
+export async function logFeedingDone(schedule: FeedingSchedule): Promise<TaskLog> {
   const { data, error } = await supabase
     .from('task_logs')
-    .insert({ tank_id: tankId, task_type: 'feeding', done_at: new Date().toISOString() })
+    .insert({
+      tank_id: schedule.tank_id,
+      task_type: 'feeding',
+      done_at: new Date().toISOString(),
+      note: `${FEEDING_NOTE_PREFIX}${schedule.id}`,
+    })
     .select()
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function fetchFeedingsDoneSince(since: Date): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('task_logs')
+    .select('note')
+    .eq('task_type', 'feeding')
+    .gte('done_at', since.toISOString());
+  if (error) throw error;
+  return new Set(
+    (data ?? [])
+      .map((row: { note: string | null }) => row.note)
+      .filter((note): note is string => !!note && note.startsWith(FEEDING_NOTE_PREFIX))
+      .map((note) => note.slice(FEEDING_NOTE_PREFIX.length))
+  );
 }
 
 export async function fetchRecentTaskLogs(limit = 20): Promise<TaskLog[]> {
@@ -242,6 +266,14 @@ export async function fetchPhotoAnalyses(tankId?: string): Promise<PhotoAnalysis
   const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
+}
+
+export async function markPhotoAnalysisError(id: string, message: string): Promise<void> {
+  const { error } = await supabase
+    .from('photo_analyses')
+    .update({ status: 'error', error_message: message })
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function createPendingPhotoAnalysis(input: {

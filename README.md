@@ -24,11 +24,10 @@ Mobilná appka (Expo / React Native) na starostlivosť o akváriové ryby:
      a storage bucket `tank-photos`)
    - V Project Settings → API skopíruj `Project URL` a `anon public` kľúč
 
-2. **Premenné prostredia**
-   ```bash
-   cp .env.example .env
-   ```
-   Doplň `EXPO_PUBLIC_SUPABASE_URL` a `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+2. **Premenné prostredia** (voliteľné)
+   Appka má v `lib/supabase.ts` zabudované hodnoty projektu AquaCare, takže beží aj bez `.env`.
+   Pre iný Supabase projekt skopíruj `.env.example` do `.env` a doplň `EXPO_PUBLIC_SUPABASE_URL`
+   a `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
 
 3. **Edge Function pre AI analýzu fotky** (voliteľné, ale potrebné pre záložku „Analýza“)
    ```bash
@@ -44,6 +43,14 @@ Mobilná appka (Expo / React Native) na starostlivosť o akváriové ryby:
    npm install
    npm run dev
    ```
+
+## Testy
+
+```bash
+npm test         # jednotkové testy (čas, plán dňa, fotky, chybové hlášky)
+npm run e2e      # celá appka v prehliadači (Playwright) proti simulovanému Supabase
+npm run typecheck && npm run lint
+```
 
 ## Štruktúra
 
