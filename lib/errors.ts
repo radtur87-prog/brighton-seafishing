@@ -1,4 +1,5 @@
 const TRANSLATIONS: [RegExp, string][] = [
+  [/(could not find the table|relation).*water_tests/i, 'V databáze chýba tabuľka pre hodnoty vody. Spusti v Supabase SQL súbor 0004_water_tests.sql.'],
   [/invalid login credentials/i, 'Nesprávny e-mail alebo heslo.'],
   [/email not confirmed/i, 'E-mail ešte nie je potvrdený. Otvor e-mail od Supabase, klikni na odkaz a potom sa prihlás.'],
   [/user already registered/i, 'Tento e-mail je už zaregistrovaný. Prihlás sa.'],

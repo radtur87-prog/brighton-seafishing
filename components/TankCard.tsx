@@ -1,20 +1,35 @@
 import type { ReactNode } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Droplets, Fish, ListChecks, Plus, Sparkles } from 'lucide-react-native';
+import { Droplets, Fish, FlaskConical, ListChecks, Plus, Sparkles } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useSignedUrl } from '@/lib/storage';
 import { tankAge, timeAgo } from '@/lib/time';
 import type { TankSummary } from '@/lib/tankSummary';
+import { STATUS_LABELS, type WaterStatus } from '@/lib/water';
+
+const WATER_COLORS: Record<WaterStatus, string> = { ok: colors.ok, watch: colors.warning, danger: colors.danger };
 
 export const CARD_WIDTH = 300;
 
-function Row({ icon, label, value, highlight }: { icon: ReactNode; label: string; value: string; highlight?: boolean }) {
+function Row({
+  icon,
+  label,
+  value,
+  highlight,
+  valueColor,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  highlight?: boolean;
+  valueColor?: string;
+}) {
   return (
     <View style={styles.row}>
       {icon}
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, highlight && { color: colors.warning }]} numberOfLines={1}>
+      <Text style={[styles.rowValue, highlight && { color: colors.warning }, valueColor ? { color: valueColor } : null]} numberOfLines={1}>
         {value}
       </Text>
     </View>
@@ -64,6 +79,12 @@ export function TankCard({ summary, now, onPress }: { summary: TankSummary; now:
           icon={<Droplets color={colors.primary} size={16} />}
           label="Výmena vody"
           value={summary.lastWaterChange ? timeAgo(summary.lastWaterChange, now) : 'nezapísaná'}
+        />
+        <Row
+          icon={<FlaskConical color={summary.water ? WATER_COLORS[summary.water.status] : colors.primary} size={16} />}
+          label="Hodnoty vody"
+          value={summary.water ? `${STATUS_LABELS[summary.water.status]} · ${timeAgo(summary.water.measured_at, now)}` : 'nemerané'}
+          valueColor={summary.water ? WATER_COLORS[summary.water.status] : undefined}
         />
         <Row
           icon={<Sparkles color={colors.primary} size={16} />}

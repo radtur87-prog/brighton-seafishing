@@ -1,5 +1,6 @@
 import type { AgendaItem } from '@/lib/agenda';
-import type { Fish, Tank, TaskLog } from '@/types/database';
+import { canAssess, waterVerdict, type WaterVerdict } from '@/lib/water';
+import type { Fish, Tank, TaskLog, WaterTest } from '@/types/database';
 
 export interface TankSummary {
   tank: Tank;
@@ -9,6 +10,8 @@ export interface TankSummary {
   lastWaterChange: string | null;
   lastFilterClean: string | null;
   todoToday: number;
+  /** Latest water verdict; null when never measured or not assessable (marine). */
+  water: WaterVerdict | null;
 }
 
 function lastLog(logs: TaskLog[], tankId: string, type: string): string | null {
@@ -19,7 +22,13 @@ function lastLog(logs: TaskLog[], tankId: string, type: string): string | null {
   return latest;
 }
 
-export function summarizeTanks(tanks: Tank[], fish: Fish[], logs: TaskLog[], agenda: AgendaItem[]): TankSummary[] {
+export function summarizeTanks(
+  tanks: Tank[],
+  fish: Fish[],
+  logs: TaskLog[],
+  agenda: AgendaItem[],
+  waterTests: WaterTest[] = []
+): TankSummary[] {
   return tanks.map((tank) => {
     const own = fish.filter((f) => f.tank_id === tank.id);
     const bySpecies = new Map<string, number>();
@@ -35,6 +44,7 @@ export function summarizeTanks(tanks: Tank[], fish: Fish[], logs: TaskLog[], age
       lastWaterChange: lastLog(logs, tank.id, 'water_change'),
       lastFilterClean: lastLog(logs, tank.id, 'filter_clean'),
       todoToday: agenda.filter((i) => i.kind !== 'lighting' && i.schedule.tank_id === tank.id).length,
+      water: canAssess(tank.water_type) ? waterVerdict(waterTests.filter((t) => t.tank_id === tank.id)) : null,
     };
   });
 }

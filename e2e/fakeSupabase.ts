@@ -28,6 +28,19 @@ const TABLE_DEFAULTS: Record<string, () => Row> = {
     created_at: new Date().toISOString(),
   }),
   task_logs: () => ({ note: null, done_at: new Date().toISOString() }),
+  water_tests: () => ({
+    ph: null,
+    gh: null,
+    kh: null,
+    nh3: null,
+    no2: null,
+    no3: null,
+    cl2: null,
+    temp_c: null,
+    note: null,
+    measured_at: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+  }),
   photo_analyses: () => ({
     status: 'pending',
     summary: null,
@@ -38,7 +51,7 @@ const TABLE_DEFAULTS: Record<string, () => Row> = {
   }),
 };
 
-const TANK_CHILDREN = ['fish', 'feeding_schedules', 'cleaning_schedules', 'lighting_schedules', 'task_logs', 'photo_analyses'];
+const TANK_CHILDREN = ['fish', 'feeding_schedules', 'cleaning_schedules', 'lighting_schedules', 'task_logs', 'water_tests', 'photo_analyses'];
 
 // 1x1 transparent PNG used for signed photo URLs.
 const PIXEL_PNG = Buffer.from(

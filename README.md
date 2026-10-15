@@ -20,7 +20,7 @@ Mobilná appka (Expo / React Native) na starostlivosť o akváriové ryby:
 
 1. **Supabase projekt**
    - Vytvor projekt na [supabase.com](https://supabase.com)
-   - V SQL editore spusti postupne všetky súbory zo `supabase/migrations/` (0001, 0002, 0003…)
+   - V SQL editore spusti postupne všetky súbory zo `supabase/migrations/` (0001, 0002, 0003, 0004…)
      – vytvoria tabuľky, RLS politiky a storage bucket `tank-photos`
    - V Project Settings → API skopíruj `Project URL` a `anon public` kľúč
 

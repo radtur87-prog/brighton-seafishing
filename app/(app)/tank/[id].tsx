@@ -2,20 +2,30 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
-import { Droplets, Pencil, Plus, Sparkles, X } from 'lucide-react-native';
+import { Droplets, NotebookPen, Pencil, Plus, Sparkles, X } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/constants/theme';
 import { TankCover } from '@/components/TankCard';
 import { FishFormSheet, TankFormSheet } from '@/components/TankForms';
-import { Button, ErrorText, SectionTitle, ui } from '@/components/ui';
+import { Button, ErrorText, Field, SectionTitle, Sheet, ui } from '@/components/ui';
+import { STATUS_COLORS } from '@/components/WaterChart';
+import { WaterTestSheet } from '@/components/WaterTestForm';
 import { loadOverview, type Overview } from '@/lib/overview';
 import { deleteFish, logTask } from '@/lib/queries';
 import { completeCleaning, removeTank } from '@/lib/reminders';
 import { errorMessage } from '@/lib/errors';
 import { tankAge, timeAgo } from '@/lib/time';
 import { BADGES } from '@/lib/agenda';
+import { formatValue, PARAM_BY_KEY, STATUS_LABELS, WATER_PARAMS } from '@/lib/water';
 import { CLEANING_TASK_LABELS, WATER_TYPE_LABELS, type CleaningTaskType } from '@/types/database';
 
-const LOG_LABELS: Record<string, string> = { ...CLEANING_TASK_LABELS, feeding: 'Kŕmenie' };
+const LOG_LABELS: Record<string, string> = { ...CLEANING_TASK_LABELS, feeding: 'Kŕmenie', note: 'Poznámka' };
+
+interface TimelineEntry {
+  id: string;
+  at: string;
+  title: string;
+  detail: string | null;
+}
 
 export default function TankDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,6 +37,9 @@ export default function TankDetail() {
   const [addingFish, setAddingFish] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [measuring, setMeasuring] = useState(false);
+  const [writingNote, setWritingNote] = useState(false);
+  const [noteText, setNoteText] = useState('');
   const now = new Date();
 
   const load = useCallback(async () => {
@@ -92,7 +105,40 @@ export default function TankDetail() {
   const { tank } = summary;
   const fish = data.fish.filter((f) => f.tank_id === tank.id);
   const tasks = data.agenda.filter((i) => i.schedule.tank_id === tank.id);
-  const history = data.logs.filter((l) => l.tank_id === tank.id).slice(0, 8);
+  // Diary: maintenance, notes and water tests in one timeline, newest first.
+  const timeline: TimelineEntry[] = [
+    ...data.logs
+      .filter((l) => l.tank_id === tank.id && l.task_type !== 'feeding')
+      .map((l) => ({
+        id: l.id,
+        at: l.done_at,
+        title: LOG_LABELS[l.task_type] ?? l.task_type,
+        detail: l.task_type === 'note' ? l.note : null,
+      })),
+    ...data.waterTests
+      .filter((t) => t.tank_id === tank.id)
+      .map((t) => ({
+        id: t.id,
+        at: t.measured_at,
+        title: 'Meranie vody',
+        detail: WATER_PARAMS.filter((p) => t[p.key] !== null)
+          .map((p) => `${p.label.split(' ')[0]} ${formatValue(p.key, Number(t[p.key]))}`)
+          .join(' · '),
+      })),
+  ]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 12);
+  const water = summary.water;
+
+  function saveNote() {
+    const text = noteText.trim();
+    if (!text) return;
+    run('note', async () => {
+      await logTask(tank.id, 'note', text);
+      setWritingNote(false);
+      setNoteText('');
+    });
+  }
   const meta = [
     tank.started_at ? tankAge(tank.started_at, now) : null,
     tank.volume_liters ? `${tank.volume_liters} l` : null,
@@ -193,13 +239,48 @@ export default function TankDetail() {
         ))}
       </View>
 
+      <View style={ui.card} testID="tank-water">
+        <SectionTitle
+          right={
+            <Pressable onPress={() => router.push(`/water?tank=${tank.id}`)}>
+              <Text style={styles.linkText}>Grafy</Text>
+            </Pressable>
+          }
+        >
+          Hodnoty vody
+        </SectionTitle>
+        {water ? (
+          <View style={[styles.waterRow, styles.gapTop]}>
+            <View style={[styles.waterDot, { backgroundColor: STATUS_COLORS[water.status] }]} />
+            <Text style={styles.listText}>
+              {water.status === 'ok' ? 'Všetko v poriadku' : water.problems.map((p) => `${PARAM_BY_KEY[p.param].label} ${formatValue(p.param, p.value)} – ${STATUS_LABELS[p.status]}`).join(', ')}
+            </Text>
+            <Text style={ui.muted}>{timeAgo(water.measured_at, now)}</Text>
+          </View>
+        ) : (
+          <Text style={[ui.muted, styles.gapTop]}>Zatiaľ nemerané.</Text>
+        )}
+        <Button label="Zapísať meranie" variant="secondary" onPress={() => setMeasuring(true)} testID="tank-add-water" style={styles.gapTop} />
+      </View>
+
       <View style={ui.card}>
-        <SectionTitle>História</SectionTitle>
-        {history.length === 0 && <Text style={[ui.muted, styles.gapTop]}>Zatiaľ žiadne záznamy.</Text>}
-        {history.map((log) => (
-          <View key={log.id} style={styles.listRow} testID="history-row">
-            <Text style={styles.listText}>{LOG_LABELS[log.task_type] ?? log.task_type}</Text>
-            <Text style={ui.muted}>{timeAgo(log.done_at, now)}</Text>
+        <SectionTitle
+          right={
+            <Pressable onPress={() => setWritingNote(true)} style={styles.addSmall} testID="add-note" accessibilityLabel="Pridať poznámku">
+              <NotebookPen color={colors.background} size={16} />
+            </Pressable>
+          }
+        >
+          Denník
+        </SectionTitle>
+        {timeline.length === 0 && <Text style={[ui.muted, styles.gapTop]}>Zatiaľ žiadne záznamy.</Text>}
+        {timeline.map((entry) => (
+          <View key={entry.id} style={styles.listRow} testID="history-row">
+            <View style={{ flex: 1 }}>
+              <Text style={styles.listText}>{entry.title}</Text>
+              {entry.detail ? <Text style={ui.muted}>{entry.detail}</Text> : null}
+            </View>
+            <Text style={ui.muted}>{timeAgo(entry.at, now)}</Text>
           </View>
         ))}
       </View>
@@ -235,6 +316,33 @@ export default function TankDetail() {
           load();
         }}
       />
+      <WaterTestSheet
+        tankId={measuring ? tank.id : null}
+        onClose={() => setMeasuring(false)}
+        onSaved={() => {
+          setMeasuring(false);
+          load();
+        }}
+      />
+      <Sheet
+        visible={writingNote}
+        title="Poznámka do denníka"
+        onClose={() => setWritingNote(false)}
+        footer={
+          <View style={{ paddingHorizontal: 24 }}>
+            <Button label={busy === 'note' ? 'Ukladám...' : 'Uložiť poznámku'} onPress={saveNote} disabled={busy !== null || !noteText.trim()} testID="save-note" />
+          </View>
+        }
+      >
+        <Field
+          placeholder="napr. pridal som 2 rastliny, jedna ryba nežerie..."
+          value={noteText}
+          onChangeText={setNoteText}
+          multiline
+          style={{ minHeight: 90, textAlignVertical: 'top' }}
+          testID="note-text"
+        />
+      </Sheet>
       <FishFormSheet
         tankId={addingFish ? tank.id : null}
         onClose={() => setAddingFish(false)}
@@ -312,4 +420,6 @@ const styles = StyleSheet.create({
   listText: { color: colors.text, fontSize: 15, flex: 1 },
   badge: { color: colors.primary, fontSize: 12, fontWeight: '700', width: 92 },
   linkText: { color: colors.primary, fontWeight: '600' },
+  waterRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  waterDot: { width: 10, height: 10, borderRadius: 5 },
 });

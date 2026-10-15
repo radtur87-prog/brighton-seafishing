@@ -111,3 +111,21 @@ export const CLEANING_TASK_LABELS: Record<CleaningTaskType, string> = {
 };
 
 export const DAY_LABELS = ['Ne', 'Po', 'Ut', 'St', 'Št', 'Pi', 'So'];
+
+export type WaterParam = 'ph' | 'gh' | 'kh' | 'nh3' | 'no2' | 'no3' | 'cl2' | 'temp_c';
+
+export interface WaterTest {
+  id: string;
+  tank_id: string;
+  measured_at: string;
+  ph: number | null;
+  gh: number | null;
+  kh: number | null;
+  nh3: number | null;
+  no2: number | null;
+  no3: number | null;
+  cl2: number | null;
+  temp_c: number | null;
+  note: string | null;
+  created_at: string;
+}

@@ -9,6 +9,7 @@ import type {
   PhotoAnalysis,
   Tank,
   TaskLog,
+  WaterTest,
   WaterType,
 } from '@/types/database';
 
@@ -323,4 +324,25 @@ export async function createPendingPhotoAnalysis(input: {
     .single();
   if (error) throw error;
   return data;
+}
+
+export type WaterTestInput = Omit<WaterTest, 'id' | 'created_at'>;
+
+export async function fetchWaterTests(tankId?: string): Promise<WaterTest[]> {
+  let query = supabase.from('water_tests').select('*').order('measured_at', { ascending: true });
+  if (tankId) query = query.eq('tank_id', tankId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function addWaterTest(input: WaterTestInput): Promise<WaterTest> {
+  const { data, error } = await supabase.from('water_tests').insert(input).select().single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteWaterTest(id: string): Promise<void> {
+  const { error } = await supabase.from('water_tests').delete().eq('id', id);
+  if (error) throw error;
 }

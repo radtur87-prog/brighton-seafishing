@@ -95,6 +95,26 @@ test.describe('desktop', () => {
     await page.getByTestId('log-water-change').click();
     await expect(page.getByTestId('history-row')).toContainText('Výmena vody');
     await expect(page.getByText('Naposledy: dnes')).toBeVisible();
+
+    // --- water test from the tank detail: bad ammonia is flagged
+    await expect(page.getByTestId('tank-water')).toContainText('Zatiaľ nemerané');
+    await page.getByTestId('tank-add-water').click();
+    await page.getByTestId('save-water-test').click();
+    await expect(page.getByRole('dialog').getByText('Vyplň aspoň jednu hodnotu.')).toBeVisible();
+    await page.getByTestId('water-ph').fill('7,6');
+    await page.getByTestId('water-nh3').fill('0,5');
+    await page.getByTestId('water-temp_c').fill('25');
+    await saveAndClose(page, 'save-water-test');
+    await expect(page.getByTestId('tank-water')).toContainText('Amoniak NH₃ 0,5 mg/l – nebezpečné');
+    await expect(page.getByTestId('history-row').first()).toContainText('Meranie vody');
+    await expect(page.getByTestId('history-row').first()).toContainText('pH 7,6 · Teplota 25 °C · Amoniak 0,5 mg/l');
+
+    // --- diary note
+    await page.getByTestId('add-note').click();
+    await page.getByTestId('note-text').fill('Pridal som 2 rastliny');
+    await saveAndClose(page, 'save-note');
+    await expect(page.getByTestId('history-row').first()).toContainText('PoznámkaPridal som 2 rastliny');
+    await expect(page.getByTestId('history-row')).toHaveCount(3);
     await shot(page, '02-tank-detail');
 
     // --- care plan
@@ -124,6 +144,7 @@ test.describe('desktop', () => {
     await expect(card).toContainText('Výmena vodydnes');
     await expect(card).toContainText('Čistenie filtranezapísané');
     await expect(card).toContainText('Úlohy dnes1');
+    await expect(card).toContainText('Hodnoty vodynebezpečné · dnes');
     await expect(page.getByTestId('home-stats')).toContainText('1akvárium40litrov6rýb1úloha dnes');
     await shot(page, '03-home-card');
 
@@ -150,8 +171,30 @@ test.describe('desktop', () => {
     await expect(page.getByText('Toľko, koľko ryby zjedia za 2–3 minúty', { exact: false })).toBeVisible();
     await go(page, 'tips');
     await expect(page.getByText('Na jedného samca daj 2–3 samice', { exact: false })).toBeVisible();
+    // --- water values: verdict, second (good) test, chart, diary, delete
     await go(page, 'water');
-    await expect(page.getByText('Pripravujeme v 2. etape')).toBeVisible();
+    await expect(page.getByTestId('water-verdict')).toContainText('Nebezpečné hodnoty');
+    await page.getByTestId('add-water-test').click();
+    await page.getByTestId('water-ph').fill('abc');
+    await page.getByTestId('save-water-test').click();
+    await expect(page.getByRole('dialog').getByText('pH: zadaj číslo (napr. 7,5).')).toBeVisible();
+    await page.getByTestId('water-ph').fill('7,8');
+    await page.getByTestId('water-nh3').fill('0');
+    await page.getByTestId('water-no3').fill('10');
+    await page.getByTestId('water-note').fill('po výmene vody');
+    await saveAndClose(page, 'save-water-test');
+    await expect(page.getByTestId('water-verdict')).toContainText('Voda je v poriadku');
+    await expect(page.getByTestId('tile-nh3')).toContainText('0 mg/lv poriadku');
+    await expect(page.getByTestId('chart-readout-ph')).toContainText('7,8');
+    await page.getByTestId('tile-no3').click();
+    await expect(page.getByTestId('chart-readout-no3')).toContainText('10 mg/l');
+    await expect(page.getByTestId('water-history-row')).toHaveCount(2);
+    await expect(page.getByTestId('water-history-row').first()).toContainText('po výmene vody');
+    await shot(page, '06-water');
+    await page.getByTestId('water-history-row').first().getByLabel('Zmazať meranie').click();
+    await expect(page.getByTestId('water-history-row')).toHaveCount(1);
+    await expect(page.getByTestId('water-verdict')).toContainText('Nebezpečné hodnoty');
+    expect(fake.tables.water_tests).toHaveLength(1);
     await go(page, 'encyclopedia');
     await expect(page.getByText('Pripravujeme v 3. etape')).toBeVisible();
 
@@ -186,6 +229,7 @@ test.describe('desktop', () => {
     await expect(page.getByTestId('tank-card')).toHaveCount(0);
     expect(fake.tables.fish).toHaveLength(0);
     expect(fake.tables.cleaning_schedules).toHaveLength(0);
+    expect(fake.tables.water_tests).toHaveLength(0);
 
     expect(pageErrors).toEqual([]);
   });
