@@ -44,11 +44,20 @@ Mobilná appka (Expo / React Native) na starostlivosť o akváriové ryby:
    npm run dev
    ```
 
+## Stála webová adresa (GitHub Pages)
+
+Každý push na `main` alebo `claude/analysis-report-9ntn2s` spustí workflow `.github/workflows/pages.yml`:
+otestuje appku a zverejní web build do vetvy `gh-pages`. Jednorazovo treba v GitHube nastaviť
+**Settings → Pages → Source: Deploy from a branch → `gh-pages` / `(root)`**.
+Appka potom beží na https://radtur87-prog.github.io/brighton-seafishing/
+
 ## Testy
 
 ```bash
 npm test         # jednotkové testy (čas, plán dňa, fotky, chybové hlášky)
 npm run e2e      # celá appka v prehliadači (Playwright) proti simulovanému Supabase
+# build pod podadresou ako na GitHub Pages:
+EXPO_BASE_URL=/brighton-seafishing npx expo export --platform web && BASE_PATH=/brighton-seafishing npx playwright test
 npm run typecheck && npm run lint
 ```
 

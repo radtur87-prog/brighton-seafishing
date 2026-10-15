@@ -35,7 +35,7 @@ function monthsAgo(months: number) {
 }
 
 async function signUp(page: Page) {
-  await page.goto('/');
+  await page.goto('./');
   await page.getByText('Nemáš účet? Zaregistruj sa').click();
   await page.getByTestId('signup-email').fill(EMAIL);
   await page.getByTestId('signup-password').fill(PASSWORD);
@@ -53,7 +53,7 @@ test.describe('desktop', () => {
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
     // --- wrong password, then register
-    await page.goto('/');
+    await page.goto('./');
     await page.getByTestId('signin-email').fill(EMAIL);
     await page.getByTestId('signin-password').fill(PASSWORD);
     await page.getByTestId('signin-submit').click();
@@ -263,7 +263,7 @@ test('registering an existing e-mail and short passwords give Slovak errors', as
   fake.users.push({ id: 'u-existing', email: EMAIL, password: PASSWORD });
   await fake.attach(page);
 
-  await page.goto('/sign-up');
+  await page.goto('./sign-up');
   await page.getByTestId('signup-email').fill(EMAIL);
   await page.getByTestId('signup-password').fill('123');
   await page.getByTestId('signup-submit').click();
