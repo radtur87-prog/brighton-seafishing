@@ -12,6 +12,8 @@ const tank: Tank = {
   volume_liters: 54,
   water_type: 'freshwater',
   notes: null,
+  photo_path: null,
+  started_at: '2026-03-14',
   created_at: now.toISOString(),
 };
 

@@ -4,9 +4,13 @@ import { FakeSupabase } from './fakeSupabase';
 const EMAIL = 'radek@example.com';
 const PASSWORD = 'tajneheslo1';
 const SHOTS = process.env.E2E_SCREENSHOTS;
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64'
+);
 
 async function shot(page: Page, name: string) {
-  if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png` });
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
 }
 
 async function saveAndClose(page: Page, testId: string) {
@@ -14,150 +18,200 @@ async function saveAndClose(page: Page, testId: string) {
   await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
-function tab(page: Page, name: string) {
-  return page.getByRole('tab', { name: new RegExp(name) });
+async function go(page: Page, section: string) {
+  await page.getByTestId(`nav-${section}`).click();
 }
 
-test('full AquaCare flow: account, tank, fish, plans, dashboard, photo, sign out', async ({ page }) => {
-  const fake = new FakeSupabase();
-  await fake.attach(page);
+async function upload(page: Page, trigger: () => Promise<void>) {
+  const chooser = page.waitForEvent('filechooser');
+  await trigger();
+  await (await chooser).setFiles({ name: 'foto.png', mimeType: 'image/png', buffer: PNG });
+}
 
-  const pageErrors: string[] = [];
-  page.on('pageerror', (e) => pageErrors.push(e.message));
+function monthsAgo(months: number) {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() - months, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
 
-  // --- unknown account shows a Slovak error
+async function signUp(page: Page) {
   await page.goto('/');
-  await expect(page.getByText('AquaCare')).toBeVisible();
-  await page.getByTestId('signin-email').fill(EMAIL);
-  await page.getByTestId('signin-password').fill(PASSWORD);
-  await page.getByTestId('signin-submit').click();
-  await expect(page.getByTestId('signin-error')).toHaveText('Nesprávny e-mail alebo heslo.');
-  await shot(page, '01-signin-error');
-
-  // --- register -> lands on dashboard
   await page.getByText('Nemáš účet? Zaregistruj sa').click();
   await page.getByTestId('signup-email').fill(EMAIL);
   await page.getByTestId('signup-password').fill(PASSWORD);
   await page.getByTestId('signup-submit').click();
-  await expect(page.getByTestId('dashboard-summary')).toHaveText('Na dnes máš všetko hotové 🎉');
-  await shot(page, '02-dashboard-empty');
+  await expect(page.getByTestId('add-tank')).toBeVisible();
+}
 
-  // --- tank + fish
-  await tab(page, 'Akváriá').click();
-  await page.getByTestId('add-tank').click();
-  await page.getByTestId('tank-name').fill('Obývačka');
-  await page.getByPlaceholder('Objem v litroch (voliteľné)').fill('54');
-  await saveAndClose(page, 'save-tank');
-  await expect(page.getByText('Obývačka')).toBeVisible();
-  await expect(page.getByText('Sladkovodné · 54 l', { exact: false })).toBeVisible();
+test.describe('desktop', () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
 
-  await page.getByTestId('tank-toggle').click();
-  await expect(page.getByText('Zatiaľ žiadne ryby.')).toBeVisible();
-  await page.getByTestId('add-fish').click();
-  await page.getByTestId('fish-species').fill('Guppy');
-  await page.getByPlaceholder('Počet kusov').fill('2');
-  await saveAndClose(page, 'save-fish');
-  await expect(page.getByText('2× Guppy')).toBeVisible();
-  await shot(page, '03-tank-with-fish');
+  test('full flow: tank card, detail, plans, calendar, stock, help, photo, sign out', async ({ page }) => {
+    const fake = new FakeSupabase();
+    await fake.attach(page);
+    const pageErrors: string[] = [];
+    page.on('pageerror', (e) => pageErrors.push(e.message));
 
-  // --- plans
-  await tab(page, 'Plán').click();
-  await expect(page.getByText('Pripomienky (notifikácie) fungujú v mobilnej appke', { exact: false })).toBeVisible();
+    // --- wrong password, then register
+    await page.goto('/');
+    await page.getByTestId('signin-email').fill(EMAIL);
+    await page.getByTestId('signin-password').fill(PASSWORD);
+    await page.getByTestId('signin-submit').click();
+    await expect(page.getByTestId('signin-error')).toHaveText('Nesprávny e-mail alebo heslo.');
+    await page.getByText('Nemáš účet? Zaregistruj sa').click();
+    await page.getByTestId('signup-email').fill(EMAIL);
+    await page.getByTestId('signup-password').fill(PASSWORD);
+    await page.getByTestId('signup-submit').click();
 
-  await page.getByTestId('add-feeding').click();
-  await page.getByTestId('feeding-time').fill('07:30');
-  await page.getByPlaceholder('Typ krmiva (napr. vločky)').fill('Vločky');
-  await page.getByPlaceholder('Dávka (napr. štipka, zje za 2 min)').fill('štipka');
-  await saveAndClose(page, 'save-schedule');
-  await expect(page.getByText('07:30 · Obývačka')).toBeVisible();
-  await expect(page.getByText('Každý deň').first()).toBeVisible();
+    // --- sidebar with all 10 sections is permanently visible on desktop
+    for (const s of ['index', 'plan', 'water', 'stock', 'encyclopedia', 'analyze', 'faq', 'tips', 'calendar', 'settings']) {
+      await expect(page.getByTestId(`nav-${s}`)).toBeVisible();
+    }
+    await expect(page.getByTestId('home-stats')).toContainText('0akvárií');
+    await shot(page, '01-home-empty');
 
-  await page.getByTestId('add-cleaning').click();
-  await page.getByTestId('cleaning-interval').fill('0');
-  await page.getByTestId('save-schedule').click();
-  await expect(page.getByText('Zadaj interval ako celé číslo od 1 do 365 dní.')).toBeVisible();
-  await page.getByTestId('cleaning-interval').fill('7');
-  await saveAndClose(page, 'save-schedule');
-  await expect(page.getByText('Výmena vody · Obývačka')).toBeVisible();
-  await expect(page.getByText('Každých 7 dní')).toBeVisible();
+    // --- create a tank with photo, start date and volume
+    await page.getByTestId('add-tank').click();
+    await upload(page, () => page.getByTestId('tank-photo').click());
+    await expect(page.getByText('Zmeniť fotku')).toBeVisible();
+    await page.getByTestId('tank-name').fill('Radtur World');
+    await page.getByTestId('tank-volume').fill('40');
+    await page.getByTestId('tank-started').fill(monthsAgo(7));
+    await saveAndClose(page, 'save-tank');
 
-  await page.getByTestId('add-lighting').click();
-  await page.getByTestId('lighting-start').fill('20:00');
-  await page.getByTestId('lighting-duration').fill('6');
-  await saveAndClose(page, 'save-schedule');
-  await expect(page.getByText('20:00–02:00 · Obývačka')).toBeVisible();
-  await expect(page.getByText('6 h svietenia')).toBeVisible();
-  await shot(page, '04-plans');
+    // lands on the tank detail
+    await expect(page.getByTestId('tank-title')).toHaveText('Radtur World');
+    await expect(page.getByText('7 mesiacov · 40 l · Sladkovodné')).toBeVisible();
+    expect(fake.tables.tanks[0].photo_path).toMatch(/\/tank-\d+\.png$/);
 
-  const cleaning = fake.tables.cleaning_schedules[0];
-  const due = new Date(String(cleaning.next_due_at));
-  expect(due.getHours()).toBe(9);
-  expect(Math.round((due.getTime() - Date.now()) / 86_400_000)).toBeGreaterThanOrEqual(6);
+    // --- stock + maintenance log
+    await page.getByTestId('add-fish').click();
+    await page.getByTestId('fish-species').fill('Guppy');
+    await page.getByTestId('fish-count').fill('6');
+    await saveAndClose(page, 'save-fish');
+    await expect(page.getByText('Osádka · 6')).toBeVisible();
+    await expect(page.getByText('6× Guppy')).toBeVisible();
 
-  // --- dashboard: feeding + lighting today; make cleaning overdue to see it too
-  cleaning.next_due_at = new Date(Date.now() - 2 * 86_400_000).toISOString();
-  await tab(page, 'Prehľad').click();
-  await page.reload();
-  await expect(page.getByTestId('dashboard-summary')).toHaveText('Úlohy na dnes: 2');
-  await expect(page.getByTestId('agenda-feeding')).toContainText('07:30 · štipka');
-  await expect(page.getByTestId('agenda-lighting')).toContainText('20:00–02:00');
-  await expect(page.getByTestId('agenda-cleaning')).toContainText('Po termíne');
-  await shot(page, '05-dashboard-tasks');
+    await page.getByTestId('log-water-change').click();
+    await expect(page.getByTestId('history-row')).toContainText('Výmena vody');
+    await expect(page.getByText('Naposledy: dnes')).toBeVisible();
+    await shot(page, '02-tank-detail');
 
-  await page.getByTestId('agenda-feeding').getByTestId('mark-done').click();
-  await expect(page.getByTestId('agenda-feeding')).toHaveCount(0);
-  await page.getByTestId('agenda-cleaning').getByTestId('mark-done').click();
-  await expect(page.getByTestId('agenda-cleaning')).toHaveCount(0);
-  await expect(page.getByTestId('agenda-lighting')).toBeVisible();
+    // --- care plan
+    await go(page, 'plan');
+    await page.getByTestId('add-feeding').click();
+    await page.getByTestId('feeding-time').fill('07:30');
+    await page.getByPlaceholder('Typ krmiva (napr. vločky)').fill('Vločky');
+    await saveAndClose(page, 'save-schedule');
+    await expect(page.getByText('07:30 · Radtur World')).toBeVisible();
+    await page.getByTestId('add-cleaning').click();
+    await page.getByRole('dialog').getByText('Čistenie filtra').click();
+    await page.getByTestId('cleaning-interval').fill('14');
+    await saveAndClose(page, 'save-schedule');
+    await expect(page.getByText('Čistenie filtra · Radtur World')).toBeVisible();
+    await page.getByTestId('add-lighting').click();
+    await page.getByTestId('lighting-start').fill('10:00');
+    await page.getByTestId('lighting-duration').fill('8');
+    await saveAndClose(page, 'save-schedule');
+    await expect(page.getByText('10:00–18:00 · Radtur World')).toBeVisible();
 
-  // Done state survives a reload; cleaning moved a week ahead.
-  await page.reload();
-  await expect(page.getByTestId('dashboard-summary')).toHaveText('Na dnes máš všetko hotové 🎉');
-  await expect(page.getByTestId('agenda-feeding')).toHaveCount(0);
-  expect(new Date(String(fake.tables.cleaning_schedules[0].next_due_at)).getTime()).toBeGreaterThan(Date.now());
-  expect(fake.tables.task_logs.map((l) => l.task_type).sort()).toEqual(['feeding', 'water_change']);
+    // --- home card reflects everything
+    await go(page, 'index');
+    const card = page.getByTestId('tank-card');
+    await expect(card).toContainText('Radtur World');
+    await expect(card).toContainText('7 mesiacov · 40 l');
+    await expect(card).toContainText('6× Guppy');
+    await expect(card).toContainText('Výmena vodydnes');
+    await expect(card).toContainText('Čistenie filtranezapísané');
+    await expect(card).toContainText('Úlohy dnes1');
+    await expect(page.getByTestId('home-stats')).toContainText('1akvárium40litrov6rýb1úloha dnes');
+    await shot(page, '03-home-card');
 
-  // --- photo analysis: upload works, missing AI function is reported clearly
-  await tab(page, 'Analýza').click();
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByText('Z galérie').click();
-  await (await chooser).setFiles({
-    name: 'akvarium.png',
-    mimeType: 'image/png',
-    buffer: Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
-      'base64'
-    ),
+    // logging the filter clean from the detail also completes the 14-day plan item
+    await card.click();
+    await page.getByTestId('log-filter-clean').click();
+    await expect(page.getByText('Naposledy: dnes')).toHaveCount(2);
+    const filterPlan = fake.tables.cleaning_schedules.find((c) => c.task_type === 'filter_clean')!;
+    expect(new Date(String(filterPlan.next_due_at)).getTime()).toBeGreaterThan(Date.now() + 13 * 86_400_000);
+
+    // --- calendar: mark feeding done
+    await go(page, 'calendar');
+    await expect(page.getByTestId('agenda-feeding')).toContainText('07:30');
+    await page.getByTestId('agenda-feeding').getByTestId('mark-done').click();
+    await expect(page.getByTestId('agenda-feeding')).toHaveCount(0);
+    await go(page, 'index');
+    await expect(page.getByTestId('tank-card')).toContainText('Úlohy dneshotovo ✓');
+
+    // --- stock, help, upcoming sections
+    await go(page, 'stock');
+    await expect(page.getByTestId('stock-total')).toHaveText('Spolu 6 rýb v 1 akváriu');
+    await go(page, 'faq');
+    await page.getByText('Koľko mám kŕmiť?').click();
+    await expect(page.getByText('Toľko, koľko ryby zjedia za 2–3 minúty', { exact: false })).toBeVisible();
+    await go(page, 'tips');
+    await expect(page.getByText('Na jedného samca daj 2–3 samice', { exact: false })).toBeVisible();
+    await go(page, 'water');
+    await expect(page.getByText('Pripravujeme v 2. etape')).toBeVisible();
+    await go(page, 'encyclopedia');
+    await expect(page.getByText('Pripravujeme v 3. etape')).toBeVisible();
+
+    // --- photo analysis
+    await go(page, 'analyze');
+    await upload(page, () => page.getByText('Z galérie').click());
+    await expect(page.getByText('AI analýza ešte nie je zapnutá', { exact: false })).toBeVisible();
+    expect([...fake.storage.keys()].some((k) => /\/analysis-\d+\.png$/.test(k))).toBe(true);
+
+    // --- edit tank name
+    await go(page, 'index');
+    await page.getByTestId('tank-card').click();
+    await page.getByTestId('edit-tank').click();
+    await page.getByTestId('tank-name').fill('Gigantic');
+    await saveAndClose(page, 'save-tank');
+    await expect(page.getByTestId('tank-title')).toHaveText('Gigantic');
+
+    // --- sign out / in
+    await go(page, 'settings');
+    await expect(page.getByTestId('settings-email')).toHaveText(EMAIL);
+    await page.getByTestId('sign-out').click();
+    await page.getByTestId('signin-email').fill(EMAIL);
+    await page.getByTestId('signin-password').fill(PASSWORD);
+    await page.getByTestId('signin-submit').click();
+    await expect(page.getByTestId('tank-card')).toContainText('Gigantic');
+
+    // --- delete with confirmation
+    await page.getByTestId('tank-card').click();
+    await page.getByTestId('delete-tank').click();
+    await page.getByText('Áno, zmazať').click();
+    await expect(page.getByTestId('add-tank')).toBeVisible();
+    await expect(page.getByTestId('tank-card')).toHaveCount(0);
+    expect(fake.tables.fish).toHaveLength(0);
+    expect(fake.tables.cleaning_schedules).toHaveLength(0);
+
+    expect(pageErrors).toEqual([]);
   });
-  await expect(page.getByText('AI analýza ešte nie je zapnutá', { exact: false })).toBeVisible();
-  expect([...fake.storage.keys()][0]).toMatch(/^tank-photos\/[0-9a-f-]+\/\d+\.png$/);
-  expect(fake.tables.photo_analyses[0].status).toBe('error');
-  await shot(page, '06-analysis');
+});
 
-  // --- settings + sign out + sign back in
-  await tab(page, 'Nastavenia').click();
-  await expect(page.getByTestId('settings-email')).toHaveText(EMAIL);
-  await expect(page.getByText('Dostupné len v mobilnej appke')).toBeVisible();
-  await page.getByTestId('sign-out').click();
-  await expect(page.getByTestId('signin-submit')).toBeVisible();
+test('phone: menu opens from the header and cards scroll sideways', async ({ page }) => {
+  const fake = new FakeSupabase();
+  await fake.attach(page);
+  await signUp(page);
 
-  await page.getByTestId('signin-email').fill(EMAIL);
-  await page.getByTestId('signin-password').fill(PASSWORD);
-  await page.getByTestId('signin-submit').click();
-  await expect(page.getByTestId('dashboard-summary')).toBeVisible();
+  for (const name of ['Radtur World', 'Gigantic']) {
+    await page.getByTestId('add-tank').click();
+    await page.getByTestId('tank-name').fill(name);
+    await saveAndClose(page, 'save-tank');
+    await expect(page.getByTestId('tank-title')).toHaveText(name);
+    await page.getByTestId('back-to-tanks').click();
+  }
+  await expect(page.getByTestId('tank-card')).toHaveCount(2);
+  await shot(page, '04-phone-home');
 
-  // --- deleting the tank needs confirmation and removes its plans
-  await tab(page, 'Akváriá').click();
-  await page.getByLabel('Zmazať akvárium').click();
-  await page.getByText('Áno, zmazať').click();
-  await expect(page.getByText('Zatiaľ nemáš žiadne akvárium', { exact: false })).toBeVisible();
-  expect(fake.tables.feeding_schedules).toHaveLength(0);
-  expect(fake.tables.lighting_schedules).toHaveLength(0);
-
-  await tab(page, 'Plán').click();
-  await expect(page.getByText('Najprv pridaj akvárium', { exact: false })).toBeVisible();
-
-  expect(pageErrors).toEqual([]);
+  await expect(page.getByTestId('nav-faq')).not.toBeInViewport();
+  await page.getByLabel('Show navigation menu').click();
+  await expect(page.getByTestId('nav-faq')).toBeInViewport();
+  await shot(page, '05-phone-menu');
+  await page.getByTestId('nav-faq').click();
+  await expect(page.getByText('Ako často mám meniť vodu?')).toBeVisible();
 });
 
 test('registering an existing e-mail and short passwords give Slovak errors', async ({ page }) => {
@@ -170,7 +224,6 @@ test('registering an existing e-mail and short passwords give Slovak errors', as
   await page.getByTestId('signup-password').fill('123');
   await page.getByTestId('signup-submit').click();
   await expect(page.getByTestId('signup-error')).toHaveText('Heslo musí mať aspoň 6 znakov.');
-
   await page.getByTestId('signup-password').fill(PASSWORD);
   await page.getByTestId('signup-submit').click();
   await expect(page.getByTestId('signup-error')).toHaveText('Tento e-mail je už zaregistrovaný. Prihlás sa.');

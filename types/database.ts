@@ -17,8 +17,17 @@ export interface Tank {
   volume_liters: number | null;
   water_type: WaterType;
   notes: string | null;
+  photo_path: string | null;
+  started_at: string | null; // 'YYYY-MM-DD'
   created_at: string;
 }
+
+export const WATER_TYPE_LABELS: Record<WaterType, string> = {
+  freshwater: 'Sladkovodné',
+  brackish: 'Brakické',
+  saltwater: 'Morské',
+  pond: 'Jazierko',
+};
 
 export interface Fish {
   id: string;

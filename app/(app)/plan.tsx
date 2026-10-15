@@ -82,8 +82,7 @@ export default function ScheduleScreen() {
   if (loaded && tanks.length === 0) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Plán</Text>
-        {error && <Text style={styles.error}>{error}</Text>}
+          {error && <Text style={styles.error}>{error}</Text>}
         <Text style={styles.empty}>
           Najprv pridaj akvárium v záložke „Akváriá“, potom tu nastavíš kŕmenie, čistenie a osvetlenie.
         </Text>
@@ -93,7 +92,6 @@ export default function ScheduleScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: spacing.xl }}>
-      <Text style={styles.title}>Plán</Text>
       {!notificationsSupported && (
         <Text style={styles.notice}>
           Pripomienky (notifikácie) fungujú v mobilnej appke. Vo webovej verzii vidíš úlohy na záložke Prehľad.
@@ -489,7 +487,7 @@ function LightingModal({ visible, tanks, onClose, onCreated }: ModalProps<Lighti
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingTop: 64, paddingHorizontal: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.background, paddingTop: spacing.md, paddingHorizontal: spacing.lg },
   title: { fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
   notice: { color: colors.textMuted, fontSize: 13, lineHeight: 18, marginBottom: spacing.sm },
   sectionHeader: {

@@ -16,17 +16,27 @@ export async function fetchTanks(): Promise<Tank[]> {
   const { data, error } = await supabase
     .from('tanks')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function createTank(input: {
+export async function fetchTank(tankId: string): Promise<Tank> {
+  const { data, error } = await supabase.from('tanks').select('*').eq('id', tankId).single();
+  if (error) throw error;
+  return data;
+}
+
+export interface TankInput {
   name: string;
   volume_liters: number | null;
   water_type: WaterType;
+  started_at: string | null;
+  photo_path?: string | null;
   notes?: string | null;
-}): Promise<Tank> {
+}
+
+export async function createTank(input: TankInput): Promise<Tank> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   if (!userData.user) throw new Error('Nie si prihlásený/á.');
@@ -36,6 +46,12 @@ export async function createTank(input: {
     .insert({ ...input, user_id: userData.user.id })
     .select()
     .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateTank(tankId: string, patch: Partial<TankInput>): Promise<Tank> {
+  const { data, error } = await supabase.from('tanks').update(patch).eq('id', tankId).select().single();
   if (error) throw error;
   return data;
 }
@@ -51,6 +67,12 @@ export async function fetchFish(tankId: string): Promise<Fish[]> {
     .select('*')
     .eq('tank_id', tankId)
     .order('added_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function fetchAllFish(): Promise<Fish[]> {
+  const { data, error } = await supabase.from('fish').select('*').order('added_at', { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
@@ -248,6 +270,16 @@ export async function fetchFeedingsDoneSince(since: Date): Promise<Set<string>> 
       .filter((note): note is string => !!note && note.startsWith(FEEDING_NOTE_PREFIX))
       .map((note) => note.slice(FEEDING_NOTE_PREFIX.length))
   );
+}
+
+export async function logTask(tankId: string, taskType: string, note: string | null = null): Promise<TaskLog> {
+  const { data, error } = await supabase
+    .from('task_logs')
+    .insert({ tank_id: tankId, task_type: taskType, done_at: new Date().toISOString(), note })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function fetchRecentTaskLogs(limit = 20): Promise<TaskLog[]> {

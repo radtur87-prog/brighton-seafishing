@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
 import { Camera, ImagePlus } from 'lucide-react-native';
@@ -11,7 +11,7 @@ import {
   fetchTanks,
   markPhotoAnalysisError,
 } from '@/lib/queries';
-import { base64ToArrayBuffer, photoFileType } from '@/lib/photos';
+import { pickPhoto, uploadPhoto, useSignedUrl } from '@/lib/storage';
 import { errorMessage } from '@/lib/errors';
 import type { PhotoAnalysis, Tank } from '@/types/database';
 
@@ -57,26 +57,8 @@ export default function AnalyzeScreen() {
   async function pickAndAnalyze(source: 'camera' | 'library') {
     setError(null);
     try {
-      // The browser file picker needs no permission prompt.
-      if (Platform.OS !== 'web') {
-        const permission =
-          source === 'camera'
-            ? await ImagePicker.requestCameraPermissionsAsync()
-            : await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-          setError('Povoľ prístup k fotoaparátu/fotkám v nastaveniach telefónu, aby sa dala fotka analyzovať.');
-          return;
-        }
-      }
-
-      const options: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 0.7, base64: true };
-      const result =
-        source === 'camera'
-          ? await ImagePicker.launchCameraAsync(options)
-          : await ImagePicker.launchImageLibraryAsync(options);
-
-      if (result.canceled || !result.assets?.[0]) return;
-      await uploadAndAnalyze(result.assets[0]);
+      const asset = await pickPhoto(source);
+      if (asset) await uploadAndAnalyze(asset);
     } catch (e) {
       setError(errorMessage(e, 'Fotku sa nepodarilo načítať.'));
     }
@@ -87,19 +69,7 @@ export default function AnalyzeScreen() {
     setError(null);
     let pendingId: string | null = null;
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) throw new Error('Nie si prihlásený/á.');
-
-      const { ext, contentType } = photoFileType(asset.mimeType, asset.uri);
-      const storagePath = `${userData.user.id}/${Date.now()}.${ext}`;
-      const body = asset.base64
-        ? base64ToArrayBuffer(asset.base64)
-        : await (await fetch(asset.uri)).arrayBuffer();
-
-      const { error: uploadError } = await supabase.storage
-        .from('tank-photos')
-        .upload(storagePath, body, { contentType, upsert: false });
-      if (uploadError) throw uploadError;
+      const storagePath = await uploadPhoto(asset, 'analysis');
 
       const pending = await createPendingPhotoAnalysis({ tank_id: selectedTankId, photo_path: storagePath });
       pendingId = pending.id;
@@ -135,7 +105,6 @@ export default function AnalyzeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Analýza fotky</Text>
       <Text style={styles.subtitle}>
         Odfoť akvárium alebo rybu – AI skontroluje čistotu vody, zdravie rýb a ďalšie faktory.
       </Text>
@@ -194,20 +163,7 @@ export default function AnalyzeScreen() {
 }
 
 function AnalysisCard({ analysis }: { analysis: PhotoAnalysis }) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    supabase.storage
-      .from('tank-photos')
-      .createSignedUrl(analysis.photo_path, 3600)
-      .then(({ data }) => {
-        if (!cancelled) setSignedUrl(data?.signedUrl ?? null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [analysis.photo_path]);
+  const signedUrl = useSignedUrl(analysis.photo_path);
 
   return (
     <View style={styles.card}>
@@ -249,7 +205,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: 64,
+    paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
   },
   title: {

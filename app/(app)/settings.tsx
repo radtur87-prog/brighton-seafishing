@@ -30,7 +30,6 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nastavenia</Text>
 
       <View style={styles.card}>
         <Text style={styles.label}>Prihlásený ako</Text>
@@ -57,7 +56,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingTop: 64, paddingHorizontal: spacing.lg },
+  container: { flex: 1, backgroundColor: colors.background, paddingTop: spacing.md, paddingHorizontal: spacing.lg },
   title: { fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
   card: {
     backgroundColor: colors.surface,
