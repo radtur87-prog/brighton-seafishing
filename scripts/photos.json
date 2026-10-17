@@ -1,14 +1,50 @@
 {
-  "home": { "query": "planted aquarium" },
-  "auth": { "query": "underwater light rays" },
-  "plan": { "query": "aquarium plants" },
-  "water": { "query": "underwater bubbles" },
-  "stock": { "query": "tropical fish aquarium" },
-  "encyclopedia": { "query": "aquarium shrimp" },
-  "analyze": { "query": "fish tank" },
-  "faq": { "query": "aquarium water surface" },
-  "tips": { "query": "aquascape" },
-  "calendar": { "query": "feeding fish aquarium" },
-  "settings": { "query": "dark aquarium" },
-  "tank": { "query": "aquarium driftwood" }
+  "home": {
+    "id": "b987c333-0534-4408-8d60-8e55258dc4b3",
+    "note": "Aquascape mini (wikimedia, cc0)"
+  },
+  "auth": {
+    "id": "75006af3-3b71-4547-b249-c4207ea15850",
+    "note": "Nature Water (stocksnap, cc0)"
+  },
+  "plan": {
+    "id": "6c11bd09-622f-449f-8ace-94cf88698264",
+    "note": "None (rawpixel, cc0)"
+  },
+  "water": {
+    "id": "90da38df-c154-416c-997a-866cd4445d62",
+    "note": "Water Bubbles (stocksnap, cc0)"
+  },
+  "stock": {
+    "id": "12a7de8a-41b2-4bc5-bbe9-5c3c6bd86abc",
+    "note": "Symphysodon, colloquially known as discus (rawpixel, cc0)"
+  },
+  "encyclopedia": {
+    "id": "3304925b-83ab-46b4-9f3f-792bf502ce49",
+    "note": "Shrimp alone aquarium tank (rawpixel, cc0)"
+  },
+  "analyze": {
+    "id": "e7552529-81a6-48a6-bf02-04f77e076f98",
+    "note": "People Alone (stocksnap, cc0)"
+  },
+  "faq": {
+    "id": "5689398e-7bc3-4c98-910d-48be7a08b95b",
+    "note": "Jellyfish Blue (stocksnap, cc0)"
+  },
+  "tips": {
+    "id": "56c39406-d707-41b4-a19b-2c35acae612e",
+    "note": "Big fish deep water (rawpixel, cc0)"
+  },
+  "calendar": {
+    "id": "706d47d9-7fed-4969-b337-2e3b545befd8",
+    "note": "Feeding koi carp. Shenzhen, China (rawpixel, cc0)"
+  },
+  "settings": {
+    "id": "ee5ac46d-efc3-499c-ad51-7c2cb24e4f97",
+    "note": "Jellyfish Blue (stocksnap, cc0)"
+  },
+  "tank": {
+    "id": "7bd73ac2-5faf-493e-bacd-9d18e8b250df",
+    "note": "None (rawpixel, cc0)"
+  }
 }
