@@ -195,8 +195,29 @@ test.describe('desktop', () => {
     await expect(page.getByTestId('water-history-row')).toHaveCount(1);
     await expect(page.getByTestId('water-verdict')).toContainText('Nebezpečné hodnoty');
     expect(fake.tables.water_tests).toHaveLength(1);
+    // --- encyclopedia: search, check against the tank, add to it
     await go(page, 'encyclopedia');
-    await expect(page.getByText('Pripravujeme v 3. etape')).toBeVisible();
+    await expect(page.getByTestId('species-card').first()).toBeVisible();
+    await page.getByTestId('species-search').fill('neón');
+    await expect(page.getByTestId('species-card')).toHaveCount(2);
+    await page.getByTestId('species-card').first().click();
+    const detail = page.getByTestId('species-detail');
+    await expect(detail).toContainText('Paracheirodon innesi');
+    await expect(page.getByTestId('species-count')).toHaveValue('8');
+    await expect(detail).toContainText('Neónka obyčajná potrebuje aspoň 54 l (máš 40 l).');
+    await expect(detail).toContainText('pH 7,6 je mimo rozsahu pre Neónka obyčajná (5–7,5).');
+    await page.getByTestId('add-species-to-tank').click();
+    await expect(detail).toContainText('Pridané: 8× do Radtur World.');
+    await shot(page, '07-encyclopedia');
+    await page.getByRole('dialog').getByLabel('Zavrieť').click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    await go(page, 'stock');
+    await expect(page.getByTestId('stock-total')).toHaveText('Spolu 14 rýb v 1 akváriu');
+    await expect(page.getByTestId('bioload').filter({ visible: true })).toContainText('155 %');
+    await expect(page.getByTestId('compat-issue').filter({ visible: true }).first()).toContainText('Pozor');
+    await expect(page.getByText('Neónka obyčajná potrebuje aspoň 54 l (máš 40 l).').filter({ visible: true })).toBeVisible();
+    await shot(page, '08-stock');
 
     // --- photo analysis
     await go(page, 'analyze');

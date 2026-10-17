@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ImagePlus } from 'lucide-react-native';
 import { Button, ChipGroup, ErrorText, Field, Label, Sheet } from '@/components/ui';
 import { DateField } from '@/components/DateField';
@@ -9,6 +9,7 @@ import { addFish, createTank, updateTank } from '@/lib/queries';
 import { pickPhoto, uploadPhoto, useSignedUrl } from '@/lib/storage';
 import { errorMessage } from '@/lib/errors';
 import { toLocalDateString } from '@/lib/time';
+import { findSpecies, searchSpecies } from '@/constants/species';
 
 const WATER_OPTIONS = (Object.keys(WATER_TYPE_LABELS) as WaterType[]).map((value) => ({
   value,
@@ -187,6 +188,13 @@ export function FishFormSheet({
       }
     >
       <Field label="Druh" placeholder="napr. Guppy" value={species} onChangeText={setSpecies} testID="fish-species" />
+      <SpeciesSuggestions
+        text={species}
+        onPick={(name, minGroup) => {
+          setSpecies(name);
+          setCount((c) => String(Math.max(Number(c) || 1, minGroup)));
+        }}
+      />
       <Field label="Počet kusov" keyboardType="number-pad" value={count} onChangeText={setCount} testID="fish-count" />
       <Field label="Poznámka (voliteľné)" placeholder="napr. samec, modrý" value={nickname} onChangeText={setNickname} />
       {error && <ErrorText>{error}</ErrorText>}
@@ -194,7 +202,35 @@ export function FishFormSheet({
   );
 }
 
+/** Encyclopedia matches for the typed species, so stock can be checked for compatibility. */
+function SpeciesSuggestions({ text, onPick }: { text: string; onPick: (name: string, minGroup: number) => void }) {
+  if (text.trim().length < 2) return null;
+  const exact = findSpecies(text);
+  if (exact && exact.name === text) {
+    return <Text style={styles.suggestHint}>{exact.note}</Text>;
+  }
+  const matches = searchSpecies(text).slice(0, 5);
+  if (matches.length === 0) {
+    return <Text style={styles.suggestHint}>Tento druh nepoznám – uloží sa, ale nebudem vedieť skontrolovať kompatibilitu.</Text>;
+  }
+  return (
+    <View style={styles.suggestRow}>
+      {matches.map((s) => (
+        <Pressable key={s.id} style={styles.suggest} onPress={() => onPick(s.name, s.minGroup)} testID="species-suggestion">
+          <Text style={styles.suggestText}>
+            {s.emoji} {s.name}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  suggest: { borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
+  suggestText: { color: colors.primary, fontSize: 13 },
+  suggestHint: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
   photoBox: {
     height: 160,
     borderRadius: radius.md,

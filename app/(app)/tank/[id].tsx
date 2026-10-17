@@ -8,6 +8,7 @@ import { TankCover } from '@/components/TankCard';
 import { FishFormSheet, TankFormSheet } from '@/components/TankForms';
 import { Button, ErrorText, Field, SectionTitle, Sheet, ui } from '@/components/ui';
 import { STATUS_COLORS } from '@/components/WaterChart';
+import { StockHealth } from '@/components/StockHealth';
 import { WaterTestSheet } from '@/components/WaterTestForm';
 import { loadOverview, type Overview } from '@/lib/overview';
 import { deleteFish, logTask } from '@/lib/queries';
@@ -212,6 +213,7 @@ export default function TankDetail() {
             </Pressable>
           </View>
         ))}
+        <StockHealth tank={tank} fish={fish} waterTests={data.waterTests.filter((t) => t.tank_id === tank.id)} />
       </View>
 
       <View style={ui.card}>

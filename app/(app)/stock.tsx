@@ -4,6 +4,8 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { colors, spacing } from '@/constants/theme';
 import { ErrorText, ui } from '@/components/ui';
+import { StockHealth } from '@/components/StockHealth';
+import { findSpecies } from '@/constants/species';
 import { loadOverview, type Overview } from '@/lib/overview';
 import { errorMessage } from '@/lib/errors';
 import { plural } from '@/lib/time';
@@ -58,12 +60,16 @@ export default function StockScreen() {
               <ChevronRight color={colors.textMuted} size={18} />
             </View>
             {fish.length === 0 && <Text style={ui.muted}>Žiadne ryby – pridáš ich v detaile akvária.</Text>}
-            {fish.map((f) => (
-              <Text key={f.id} style={[ui.body, styles.fish]}>
-                {f.count}× {f.species}
-                {f.nickname ? <Text style={ui.muted}>{` · ${f.nickname}`}</Text> : null}
-              </Text>
-            ))}
+            {fish.map((f) => {
+              const known = findSpecies(f.species);
+              return (
+                <Text key={f.id} style={[ui.body, styles.fish]}>
+                  {known?.emoji ?? '❔'} {f.count}× {f.species}
+                  {f.nickname ? <Text style={ui.muted}>{` · ${f.nickname}`}</Text> : null}
+                </Text>
+              );
+            })}
+            <StockHealth tank={s.tank} fish={fish} waterTests={data.waterTests.filter((t) => t.tank_id === s.tank.id)} />
           </Pressable>
         );
       })}
