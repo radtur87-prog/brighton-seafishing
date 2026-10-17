@@ -1,0 +1,28 @@
+# Downloads background photos chosen in scripts/photos.json and commits them to the branch.
+name: Fetch background photos
+
+on:
+  push:
+    branches: [claude/analysis-report-9ntn2s]
+    paths: [scripts/photos.json, scripts/fetch-photos.mjs]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/fetch-photos.mjs
+      - name: Commit photos
+        run: |
+          git add -A assets/backgrounds
+          if git diff --cached --quiet; then echo "nothing new"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Fetch background photos"
+          git push -q

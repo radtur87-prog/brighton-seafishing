@@ -1,0 +1,14 @@
+{
+  "home": { "query": "planted aquarium fish" },
+  "auth": { "query": "underwater light rays" },
+  "plan": { "query": "aquarium plants" },
+  "water": { "query": "underwater bubbles" },
+  "stock": { "query": "tropical fish aquarium" },
+  "encyclopedia": { "query": "aquarium shrimp" },
+  "analyze": { "query": "fish tank" },
+  "faq": { "query": "aquarium water surface" },
+  "tips": { "query": "aquascape" },
+  "calendar": { "query": "feeding fish aquarium" },
+  "settings": { "query": "dark aquarium" },
+  "tank": { "query": "aquarium driftwood" }
+}
