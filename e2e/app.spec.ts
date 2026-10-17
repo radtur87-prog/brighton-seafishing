@@ -170,7 +170,7 @@ test.describe('desktop', () => {
     await page.getByText('Koľko mám kŕmiť?').click();
     await expect(page.getByText('Toľko, koľko ryby zjedia za 2–3 minúty', { exact: false })).toBeVisible();
     await go(page, 'tips');
-    await expect(page.getByText('Na jedného samca daj 2–3 samice', { exact: false })).toBeVisible();
+    await expect(page.getByText('Na jedného samca daj 2–3 samice', { exact: false }).filter({ visible: true })).toBeVisible();
     // --- water values: verdict, second (good) test, chart, diary, delete
     await go(page, 'water');
     await expect(page.getByTestId('water-verdict')).toContainText('Nebezpečné hodnoty');
@@ -333,4 +333,65 @@ test('an expired reset link explains what to do', async ({ page }) => {
   await fake.attach(page);
   await page.goto('./#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
   await expect(page.getByTestId('signin-error')).toHaveText('Odkaz z e-mailu už vypršal alebo bol použitý. Požiadaj o nový.');
+});
+
+test('phone tour: every screen has its aquarium photo, home has hero, greeting and tip', async ({ page }) => {
+  const fake = new FakeSupabase();
+  await fake.attach(page);
+  await page.goto('./');
+  await expect(page.getByTestId('backdrop-auth')).toBeAttached();
+  await shot(page, 'm01-sign-in');
+  await page.getByText('Nemáš účet? Zaregistruj sa').click();
+  await page.getByTestId('signup-email').fill(EMAIL);
+  await page.getByTestId('signup-password').fill(PASSWORD);
+  await page.getByTestId('signup-submit').click();
+
+  await expect(page.getByTestId('home-hero')).toContainText('AquaCare');
+  await expect(page.getByTestId('home-greeting')).toHaveText(/^(Dobré ráno|Pekný deň|Dobrý večer|Dobrú noc) 👋$/);
+  await expect(page.getByTestId('tip-of-day')).toContainText('Tip dňa');
+
+  await page.getByTestId('add-tank').click();
+  await page.getByTestId('tank-name').fill('Radtur World');
+  await page.getByTestId('tank-volume').fill('40');
+  await page.getByTestId('tank-started').fill(monthsAgo(1));
+  await saveAndClose(page, 'save-tank');
+  await page.getByTestId('add-fish').click();
+  await page.getByTestId('fish-species').fill('gup');
+  await page.getByTestId('species-suggestion').first().click();
+  await expect(page.getByTestId('fish-species')).toHaveValue('Živorodka dúhová (Guppy)');
+  await expect(page.getByTestId('fish-count')).toHaveValue('3');
+  await saveAndClose(page, 'save-fish');
+  await page.getByTestId('tank-add-water').click();
+  await page.getByTestId('water-ph').fill('7,6');
+  await page.getByTestId('water-kh').fill('12');
+  await page.getByTestId('water-no3').fill('10');
+  await saveAndClose(page, 'save-water-test');
+  await expect(page.getByTestId('backdrop-tank')).toBeAttached();
+  await shot(page, 'm03-tank');
+  await page.getByTestId('back-to-tanks').click();
+  await expect(page.getByTestId('tank-card')).toContainText('Radtur World');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, 'm02-home');
+
+  for (const [route, theme] of [
+    ['water', 'water'],
+    ['stock', 'stock'],
+    ['encyclopedia', 'encyclopedia'],
+    ['plan', 'plan'],
+    ['calendar', 'calendar'],
+    ['tips', 'tips'],
+    ['faq', 'faq'],
+    ['analyze', 'analyze'],
+    ['settings', 'settings'],
+  ] as const) {
+    await page.getByLabel('Show navigation menu').filter({ visible: true }).click();
+    await page.getByTestId(`nav-${route}`).click();
+    await expect(page.getByTestId(`backdrop-${theme}`)).toBeAttached();
+    await page.waitForTimeout(300);
+    await shot(page, `m-${route}`);
+  }
+  await page.getByLabel('Show navigation menu').filter({ visible: true }).click();
+  await expect(page.getByTestId('nav-faq')).toBeInViewport();
+  await page.waitForTimeout(500);
+  await shot(page, 'm00-menu');
 });

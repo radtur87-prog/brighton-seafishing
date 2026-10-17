@@ -94,7 +94,7 @@ export default function ScheduleScreen() {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: spacing.xl }}>
       {!notificationsSupported && (
         <Text style={styles.notice}>
-          Pripomienky (notifikácie) fungujú v mobilnej appke. Vo webovej verzii vidíš úlohy na záložke Prehľad.
+          Pripomienky (notifikácie) fungujú v mobilnej appke. Vo webovej verzii vidíš dnešné úlohy na úvodnej strane a v Kalendári.
         </Text>
       )}
       {error && <Text style={styles.error}>{error}</Text>}
@@ -487,7 +487,7 @@ function LightingModal({ visible, tanks, onClose, onCreated }: ModalProps<Lighti
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingTop: spacing.md, paddingHorizontal: spacing.lg },
+  container: { flex: 1, backgroundColor: 'transparent', paddingTop: spacing.md, paddingHorizontal: spacing.lg },
   title: { fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
   notice: { color: colors.textMuted, fontSize: 13, lineHeight: 18, marginBottom: spacing.sm },
   sectionHeader: {

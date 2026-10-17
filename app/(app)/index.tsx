@@ -1,11 +1,16 @@
 import { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ChevronRight } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/constants/theme';
 import { AddTankCard, TankCard } from '@/components/TankCard';
 import { TankFormSheet } from '@/components/TankForms';
-import { ErrorText, SectionTitle, ui } from '@/components/ui';
+import { ErrorText, GLASS, SectionTitle, ui } from '@/components/ui';
+import { Bubbles } from '@/components/Bubbles';
+import { FILL_IMAGE } from '@/components/PhotoBackdrop';
+import { BACKGROUNDS } from '@/constants/backgrounds';
+import { greeting, tipOfDay } from '@/lib/greeting';
 import { BADGES } from '@/lib/agenda';
 import { loadOverview, type Overview } from '@/lib/overview';
 import { errorMessage } from '@/lib/errors';
@@ -45,6 +50,8 @@ export default function TanksHome() {
   const tasks = (data?.agenda ?? []).filter((i) => i.kind !== 'lighting');
   // On phones the cards scroll sideways like the sketch; wide screens wrap them into a grid.
   const scrollCards = width < 700;
+  const heroHeight = width < 700 ? 260 : 340;
+  const tip = tipOfDay(now);
 
   const cards = (
     <>
@@ -61,6 +68,27 @@ export default function TanksHome() {
       contentContainerStyle={ui.content}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.primary} />}
     >
+      <View style={[styles.hero, { height: heroHeight }]} testID="home-hero">
+        <Image source={BACKGROUNDS.home} style={FILL_IMAGE} resizeMode="cover" accessibilityLabel="Zarastené akvárium s rybkami" />
+        <LinearGradient colors={['rgba(3,13,22,0.05)', 'rgba(3,13,22,0.35)', 'rgba(3,13,22,0.92)']} style={StyleSheet.absoluteFill} />
+        <Bubbles height={heroHeight} />
+        <View style={styles.heroText}>
+          <Text style={styles.heroGreeting} testID="home-greeting">
+            {greeting(now)} 👋
+          </Text>
+          <Text style={styles.heroTitle}>AquaCare</Text>
+          <Text style={styles.heroSub}>Tvoje akváriá pod kontrolou</Text>
+        </View>
+      </View>
+
+      <View style={[ui.card, styles.tip]} testID="tip-of-day">
+        <Text style={styles.tipEmoji}>💡</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.tipLabel}>Tip dňa · {tip.topic}</Text>
+          <Text style={ui.body}>{tip.text}</Text>
+        </View>
+      </View>
+
       {data && (
         <View style={styles.stats} testID="home-stats">
           <Stat value={summaries.length} label={plural(summaries.length, 'akvárium', 'akváriá', 'akvárií')} />
@@ -134,6 +162,22 @@ function Stat({ value, label, warn }: { value: number; label: string; warn?: boo
 }
 
 const styles = StyleSheet.create({
+  hero: { borderRadius: radius.lg, overflow: 'hidden', justifyContent: 'flex-end', backgroundColor: colors.surfaceAlt },
+  heroText: { padding: spacing.lg },
+  heroGreeting: { color: '#CFEFF2', fontSize: 16, fontWeight: '600' },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontSize: 44,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
+  },
+  heroSub: { color: '#D7ECF0', fontSize: 15, marginTop: 2 },
+  tip: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  tipEmoji: { fontSize: 26 },
+  tipLabel: { color: colors.primary, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', marginBottom: 2 },
   stats: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -141,6 +185,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.md,
+    ...GLASS,
   },
   stat: { flex: 1, alignItems: 'center' },
   statValue: { color: colors.text, fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },

@@ -19,7 +19,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: 'transparent' },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: spacing.lg },
   inner: { width: '100%', maxWidth: 420, alignSelf: 'center' },
   brand: { fontSize: 18, fontWeight: '700', color: colors.textMuted, textAlign: 'center' },

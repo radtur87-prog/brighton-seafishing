@@ -204,7 +204,7 @@ function AnalysisCard({ analysis }: { analysis: PhotoAnalysis }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
   },

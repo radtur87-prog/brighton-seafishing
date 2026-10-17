@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Droplets, Fish, FlaskConical, ListChecks, Plus, Sparkles } from 'lucide-react-native';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useSignedUrl } from '@/lib/storage';
+import { BACKGROUNDS } from '@/constants/backgrounds';
+import { FILL_IMAGE } from '@/components/PhotoBackdrop';
 import { tankAge, timeAgo } from '@/lib/time';
 import type { TankSummary } from '@/lib/tankSummary';
 import { STATUS_LABELS, type WaterStatus } from '@/lib/water';
@@ -40,13 +42,8 @@ export function TankCover({ path, height, children }: { path: string | null; hei
   const url = useSignedUrl(path);
   return (
     <View style={[styles.cover, { height }]}>
-      {url ? (
-        <Image source={{ uri: url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      ) : (
-        <LinearGradient colors={['#0E4A5C', '#0A2233']} style={[StyleSheet.absoluteFill, styles.placeholder]}>
-          <Text style={styles.placeholderEmoji}>🐠</Text>
-        </LinearGradient>
-      )}
+      {/* Without its own photo a tank shows a stock aquarium shot. */}
+      <Image source={url ? { uri: url } : BACKGROUNDS.tank} style={FILL_IMAGE} resizeMode="cover" />
       <LinearGradient colors={['transparent', 'rgba(3,12,20,0.92)']} style={styles.coverShade} />
       {children}
     </View>
@@ -124,8 +121,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cover: { width: '100%', justifyContent: 'flex-end', backgroundColor: colors.surfaceAlt },
-  placeholder: { alignItems: 'center', justifyContent: 'center' },
-  placeholderEmoji: { fontSize: 56, opacity: 0.85 },
   coverShade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 90 },
   coverText: { padding: spacing.md },
   name: { color: '#FFFFFF', fontSize: 22, fontWeight: '800' },

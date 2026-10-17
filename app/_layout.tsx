@@ -1,9 +1,16 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+
+// Navigators stay transparent so each layout's aquarium photo shows through.
+const NAV_THEME = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: 'transparent', card: '#061826', primary: '#2DD4BF' },
+};
 
 function RootNavigation() {
   const { session, loading, recovering } = useAuth();
@@ -42,11 +49,13 @@ export default function RootLayout() {
   useFrameworkReady();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <RootNavigation />
-        <StatusBar style="light" />
-      </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#061826' }}>
+      <ThemeProvider value={NAV_THEME}>
+        <AuthProvider>
+          <RootNavigation />
+          <StatusBar style="light" />
+        </AuthProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }

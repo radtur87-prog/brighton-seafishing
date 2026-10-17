@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -135,8 +136,14 @@ export function ErrorText({ children }: { children: ReactNode }) {
   return <Text style={styles.error}>{children}</Text>;
 }
 
+/** Frosted-glass blur behind translucent cards (web only; native just shows the translucent colour). */
+export const GLASS = Platform.select<object>({
+  web: { backdropFilter: 'blur(14px) saturate(140%)', WebkitBackdropFilter: 'blur(14px) saturate(140%)' },
+  default: {},
+});
+
 export const ui = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl * 2 },
   card: {
     backgroundColor: colors.surface,
@@ -144,6 +151,7 @@ export const ui = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
+    ...GLASS,
   },
   muted: { color: colors.textMuted, fontSize: 13, lineHeight: 19 },
   body: { color: colors.text, fontSize: 15, lineHeight: 22 },
