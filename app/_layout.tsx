@@ -6,7 +6,7 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 
 function RootNavigation() {
-  const { session, loading } = useAuth();
+  const { session, loading, recovering } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -14,13 +14,20 @@ function RootNavigation() {
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const authScreen = (segments as string[])[1];
+
+    // Opened from the reset e-mail: stay on "new password" until it is saved.
+    if (recovering) {
+      if (authScreen !== 'reset-password') router.replace('/(auth)/reset-password');
+      return;
+    }
 
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/sign-in');
-    } else if (session && inAuthGroup) {
+    } else if (session && inAuthGroup && authScreen !== 'reset-password') {
       router.replace('/(app)');
     }
-  }, [session, loading, segments, router]);
+  }, [session, loading, recovering, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

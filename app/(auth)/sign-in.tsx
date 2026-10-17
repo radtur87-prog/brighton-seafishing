@@ -10,13 +10,14 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuth } from '@/lib/AuthContext';
+import { authLinkError } from '@/lib/supabase';
 import { colors, radius, spacing } from '@/constants/theme';
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(authLinkError);
   const [loading, setLoading] = useState(false);
 
   async function handleSignIn() {
@@ -65,6 +66,14 @@ export default function SignInScreen() {
         <Pressable style={styles.button} onPress={handleSignIn} disabled={loading} testID="signin-submit">
           <Text style={styles.buttonText}>{loading ? 'Prihlasujem...' : 'Prihlásiť sa'}</Text>
         </Pressable>
+
+        <Link
+          href={{ pathname: '/(auth)/forgot-password', params: email.trim() ? { email: email.trim() } : {} }}
+          style={styles.forgot}
+          testID="forgot-password-link"
+        >
+          <Text style={styles.linkText}>Zabudnuté heslo?</Text>
+        </Link>
 
         <Link href="/(auth)/sign-up" style={styles.link}>
           <Text style={styles.linkText}>Nemáš účet? Zaregistruj sa</Text>
@@ -122,6 +131,9 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     fontSize: 14,
+  },
+  forgot: {
+    alignSelf: 'flex-end',
   },
   link: {
     marginTop: spacing.md,

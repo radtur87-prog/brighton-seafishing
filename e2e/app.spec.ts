@@ -272,3 +272,44 @@ test('registering an existing e-mail and short passwords give Slovak errors', as
   await page.getByTestId('signup-submit').click();
   await expect(page.getByTestId('signup-error')).toHaveText('Tento e-mail je už zaregistrovaný. Prihlás sa.');
 });
+
+test('forgotten password: request the e-mail, open the link, set a new password', async ({ page, baseURL }) => {
+  const fake = new FakeSupabase();
+  fake.users.push({ id: 'u-radek', email: EMAIL, password: 'stareheslo' });
+  await fake.attach(page);
+
+  await page.goto('./');
+  await page.getByTestId('signin-email').fill(EMAIL);
+  await page.getByTestId('forgot-password-link').click();
+  await expect(page.getByTestId('reset-email')).toHaveValue(EMAIL);
+  await page.getByTestId('reset-submit').click();
+  await expect(page.getByTestId('reset-sent')).toContainText(`Poslali sme e-mail na ${EMAIL}`);
+  expect(fake.recoveryEmails).toEqual([{ email: EMAIL, redirectTo: baseURL }]);
+
+  // the link from the e-mail lands on the app root with the recovery tokens in the hash
+  await page.goto(`./${fake.recoveryHash(EMAIL)}`);
+  await expect(page.getByTestId('new-password')).toBeVisible();
+  await page.getByTestId('new-password').fill('noveheslo1');
+  await page.getByTestId('new-password-confirm').fill('ineheslo');
+  await page.getByTestId('save-new-password').click();
+  await expect(page.getByText('Heslá sa nezhodujú.')).toBeVisible();
+  await page.getByTestId('new-password-confirm').fill('noveheslo1');
+  await page.getByTestId('save-new-password').click();
+  await expect(page.getByTestId('add-tank')).toBeVisible();
+  expect(fake.users[0].password).toBe('noveheslo1');
+
+  // signs in with the new password afterwards
+  await page.goto('./settings');
+  await page.getByTestId('sign-out').click();
+  await page.getByTestId('signin-email').fill(EMAIL);
+  await page.getByTestId('signin-password').fill('noveheslo1');
+  await page.getByTestId('signin-submit').click();
+  await expect(page.getByTestId('add-tank')).toBeVisible();
+});
+
+test('an expired reset link explains what to do', async ({ page }) => {
+  const fake = new FakeSupabase();
+  await fake.attach(page);
+  await page.goto('./#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
+  await expect(page.getByTestId('signin-error')).toHaveText('Odkaz z e-mailu už vypršal alebo bol použitý. Požiadaj o nový.');
+});

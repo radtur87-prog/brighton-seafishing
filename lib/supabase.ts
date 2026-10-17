@@ -13,6 +13,19 @@ const DEFAULT_SUPABASE_ANON_KEY =
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
 
+// Read the URL hash before the client consumes and clears it (it holds the password-reset tokens or a link error).
+const initialHash = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
+const hashParams = new URLSearchParams(initialHash);
+
+/** The app was opened from the "reset password" e-mail link. */
+export const openedFromRecoveryLink = hashParams.get('type') === 'recovery';
+
+/** Error from an e-mail link (e.g. expired), shown on the sign-in screen. */
+export const authLinkError: string | null =
+  hashParams.get('error_code') === 'otp_expired'
+    ? 'Odkaz z e-mailu už vypršal alebo bol použitý. Požiadaj o nový.'
+    : hashParams.get('error_description');
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: AsyncStorage,

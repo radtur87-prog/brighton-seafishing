@@ -69,9 +69,19 @@ export class FakeSupabase {
   tables: Record<string, Row[]> = Object.fromEntries(Object.keys(TABLE_DEFAULTS).map((t) => [t, []]));
   storage = new Map<string, Buffer>();
   functionCalls = 0;
+  /** Password-reset e-mails "sent": address + the redirect URL the app asked for. */
+  recoveryEmails: { email: string; redirectTo: string | null }[] = [];
 
   async attach(page: Page) {
     await page.route(`${SUPABASE_URL}/**`, (route) => this.handle(route));
+  }
+
+  /** The hash part of the link Supabase e-mails for a password reset. */
+  recoveryHash(email: string) {
+    const user = this.users.find((u) => u.email === email);
+    if (!user) throw new Error(`no user ${email}`);
+    const s = this.session(user);
+    return `#access_token=${s.access_token}&expires_at=${s.expires_at}&expires_in=3600&refresh_token=${s.refresh_token}&token_type=bearer&type=recovery`;
   }
 
   private session(user: { id: string; email: string }) {
@@ -143,6 +153,18 @@ export class FakeSupabase {
       const user = this.users.find((u) => u.email === email && u.password === password);
       if (!user) return json(400, { code: 'invalid_credentials', message: 'Invalid login credentials' });
       return json(200, this.session(user));
+    }
+    if (path === '/auth/v1/recover') {
+      const { email } = req.postDataJSON();
+      this.recoveryEmails.push({ email, redirectTo: url.searchParams.get('redirect_to') });
+      return json(200, {});
+    }
+    if (path === '/auth/v1/user' && req.method() === 'PUT') {
+      const user = this.userFromAuth(route);
+      if (!user) return json(401, { message: 'invalid JWT' });
+      const { password } = req.postDataJSON();
+      if (password) user.password = password;
+      return json(200, this.userJson(user));
     }
     if (path === '/auth/v1/user') {
       const user = this.userFromAuth(route);
